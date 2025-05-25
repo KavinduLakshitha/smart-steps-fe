@@ -196,19 +196,6 @@ const Home = () => {
       bgColor: "bg-blue-50",
       textColor: "text-blue-700",
       borderColor: "border-blue-200"
-    },
-    {
-      id: 4,
-      title: "Lesson Prediction",
-      description: "Get customized lesson recommendations based on your profile.",
-      image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=500",
-      path: "/lesson-prediction",
-      status: assessmentStatus.lesson,
-      icon: Target,
-      color: "from-orange-500 to-orange-600",
-      bgColor: "bg-orange-50",
-      textColor: "text-orange-700",
-      borderColor: "border-orange-200"
     }
   ];
 
