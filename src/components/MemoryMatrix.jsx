@@ -1,16 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Typography,
-  Container,
-  Box,
-  Button,
-  Paper,
-  Grid,
-  Card,
-  CardContent,
-  Link
-} from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const MemoryMatrix = () => {
   const navigate = useNavigate();
@@ -219,48 +211,36 @@ const MemoryMatrix = () => {
       const isInPattern = pattern.includes(i);
       const isSelected = userSelections.includes(i);
       
-      let cellClass = "cell";
+      let cellClasses = "w-[60px] h-[60px] border-2 border-gray-800 inline-block cursor-pointer rounded-md transition-all duration-200";
+      
+      // Apply appropriate styling based on cell state
       if (showPattern && isInPattern) {
-        cellClass += " highlight";
+        cellClasses += " bg-blue-600";
       } else if (isSelected && isInPattern) {
-        cellClass += " correct";
+        cellClasses += " bg-green-500";
       } else if (isSelected && !isInPattern) {
-        cellClass += " wrong";
+        cellClasses += " bg-red-500";
       } else if (gameOver && isInPattern && !isSelected) {
-        cellClass += " missed";
+        cellClasses += " bg-orange-500";
+      } else {
+        cellClasses += " bg-gray-200 hover:bg-gray-300";
       }
       
       cells.push(
         <div
           key={i}
           onClick={() => handleCellClick(i)}
-          style={{
-            width: '60px',
-            height: '60px',
-            backgroundColor: 
-              cellClass.includes("highlight") ? "#3f51b5" :
-              cellClass.includes("correct") ? "#4caf50" :
-              cellClass.includes("wrong") ? "#f44336" :
-              cellClass.includes("missed") ? "#ff9800" : 
-              "#e0e0e0",
-            border: "2px solid #000",
-            display: "inline-block",
-            cursor: "pointer",
-            margin: "2px"
-          }}
+          className={cellClasses}
         />
       );
     }
     
     return (
       <div
+        className="grid gap-1 mx-auto my-5"
         style={{
-          display: "grid",
           gridTemplateColumns: `repeat(${gridSizeX}, 1fr)`,
-          gap: "5px",
-          margin: "20px auto",
-          width: `${gridSizeX * 65}px`,
-          justifyContent: "center"
+          width: `${gridSizeX * 65}px`
         }}
       >
         {cells}
@@ -271,112 +251,111 @@ const MemoryMatrix = () => {
   const handleNavigateToCognitive = () => {
     navigate("/cognitive");
   };
+
+  // Determine message color class
+  const getMessageColorClass = () => {
+    if (message.includes("Well done") || message.includes("✅")) {
+      return "text-green-600";
+    } else if (message.includes("Try again") || message.includes("❌")) {
+      return "text-red-600";
+    }
+    return "text-gray-800";
+  };
   
   return (
-    <Container maxWidth="md">
-      <Box sx={{ my: 5, textAlign: "center" }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          Memory Matrix Game
-        </Typography>
-        <Typography variant="subtitle1" gutterBottom>
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="my-8 text-center">
+        <h1 className="text-4xl font-bold mb-2">Memory Matrix Game</h1>
+        <p className="text-gray-600">
           Memorize the pattern and recreate it!
-        </Typography>
-      </Box>
+        </p>
+      </div>
       
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2, mb: 5, textAlign: "center" }}>
-        <Grid container spacing={2} justifyContent="center">
-          <Grid item xs={12} sm={4}>
-            <Typography variant="h6">
-              Score: {score}
-            </Typography>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Typography variant="h6">
-              Round: {round}/6
-            </Typography>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            <Typography variant="h6">
-              Tiles: {pattern.length}
-            </Typography>
-          </Grid>
-        </Grid>
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-8 text-center">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+          <div>
+            <h2 className="text-lg font-semibold">
+              Score: <span className="text-blue-600">{score}</span>
+            </h2>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">
+              Round: <span className="text-blue-600">{round}/6</span>
+            </h2>
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold">
+              Tiles: <span className="text-blue-600">{pattern.length}</span>
+            </h2>
+          </div>
+        </div>
         
-        <Box sx={{ my: 3 }}>
+        <div className="my-6">
           {renderGameBoard()}
-        </Box>
+        </div>
         
-        <Typography variant="h6" color={
-          message.includes("Well done") || message.includes("✅") ? "success.main" : 
-          message.includes("Try again") || message.includes("❌") ? "error.main" : 
-          "text.primary"
-        }>
+        <h2 className={`text-xl font-semibold ${getMessageColorClass()}`}>
           {message}
-        </Typography>
+        </h2>
         
         {!showPattern && !gameOver && (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          <p className="text-gray-600 mt-2">
             Selected: {userSelections.length} / {pattern.length} tiles
-          </Typography>
+          </p>
         )}
         
         {gameOver && (
-          <Box sx={{ mt: 4, p: 2, bgcolor: "#f9f9f9", borderRadius: 2 }}>
-            <Typography variant="h5" gutterBottom>
+          <Alert className="mt-6 bg-gray-50 border border-gray-200">
+            <AlertTitle className="text-xl font-bold">
               Game Over!
-            </Typography>
-            <Typography variant="body1">
-              Final Score: {score}
-            </Typography>
-            <Typography variant="body1">
-              Time Taken: {timeTaken} minutes
-            </Typography>
-            <Typography variant="body1">
-              Highest Level Reached: {level}
-            </Typography>
-            
-            <Box sx={{ mt: 3 }}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                component={Link}
-                onClick={handleNavigateToCognitive}
-                sx={{ mx: 1 }}
-              >
-                Back to Assessment
-              </Button>
-              <Button 
-                variant="outlined" 
-                color="primary" 
-                onClick={() => window.location.reload()}
-                sx={{ mx: 1 }}
-              >
-                Play Again
-              </Button>
-            </Box>
-          </Box>
+            </AlertTitle>
+            <AlertDescription>
+              <p className="font-semibold mb-1">
+                Final Score: {score}
+              </p>
+              <p className="mb-1">
+                Time Taken: {timeTaken} minutes
+              </p>
+              <p className="mb-4">
+                Highest Level Reached: {level}
+              </p>
+              
+              <div className="flex justify-center gap-3 mt-4">
+                <Button 
+                  variant="default" 
+                  onClick={handleNavigateToCognitive}
+                >
+                  Back to Assessment
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.reload()}
+                >
+                  Play Again
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
-      </Paper>
+      </div>
       
-      <Card sx={{ mb: 5 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
+      <Card className="mb-8">
+        <CardContent className="pt-6">
+          <h2 className="text-xl font-semibold mb-2">
             How to Play:
-          </Typography>
-          <Typography variant="body2" component="div">
-            <ol style={{ textAlign: "left" }}>
-              <li>A pattern of blue tiles will appear briefly on the grid.</li>
-              <li>Memorize the locations of the highlighted tiles.</li>
-              <li>After the pattern disappears, click on the tiles to recreate the pattern.</li>
-              <li>You must select exactly the same number of tiles shown in the pattern.</li>
-              <li>Get 250 points for each correct tile selection plus bonuses for perfect recalls.</li>
-              <li>The difficulty increases as you succeed and decreases if you make mistakes.</li>
-              <li>The game ends after 6 rounds.</li>
-            </ol>
-          </Typography>
+          </h2>
+          <ol className="text-left space-y-1 list-decimal pl-5">
+            <li>A pattern of blue tiles will appear briefly on the grid.</li>
+            <li>Memorize the locations of the highlighted tiles.</li>
+            <li>After the pattern disappears, click on the tiles to recreate the pattern.</li>
+            <li>You must select exactly the same number of tiles shown in the pattern.</li>
+            <li>Get 250 points for each correct tile selection plus bonuses for perfect recalls.</li>
+            <li>The difficulty increases as you succeed and decreases if you make mistakes.</li>
+            <li>The game ends after 6 rounds.</li>
+          </ol>
         </CardContent>
       </Card>
-    </Container>
+    </div>
   );
 };
 

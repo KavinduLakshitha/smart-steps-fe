@@ -74,7 +74,7 @@ const Navbar = () => {
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div className="flex flex-col">
-                <span className="text-xl font-bold text-gray-900">Edu Platform</span>
+                <span className="text-xl font-bold text-gray-900">Smart Steps</span>
                 <span className="text-xs text-gray-500 hidden sm:block">Learn. Grow. Excel.</span>
               </div>
             </div>

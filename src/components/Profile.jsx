@@ -50,6 +50,50 @@ const Profile = () => {
     probabilityTime: "probability time(s)",
   };
 
+  // Utility function to fetch user profile data from API
+  const fetchUserProfile = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      navigate("/login");
+      return null;
+    }
+
+    try {
+      const response = await axios.get(
+        config.api.getUrl('MAIN_API', '/api/auth/profile'),
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+      if (error.response && error.response.status === 401) {
+        setSnackbarMessage("Your session has expired. Please log in again.");
+        localStorage.removeItem("token");
+        setTimeout(() => navigate("/login"), 1000);
+      }
+      throw error;
+    }
+  };
+
+  // Function to update stress level and cognitive performance in API
+  const updateUserPerformanceData = async (updates) => {
+    const token = localStorage.getItem("token");
+    try {
+      await axios.put(
+        config.api.getUrl('MAIN_API', '/api/auth/updatePerformanceData'),
+        updates,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+    } catch (error) {
+      console.error("Error updating performance data:", error);
+      throw error;
+    }
+  };
+
   const handleLessonPrediction = async (profileData) => {
     setLoading(true);
     try {
@@ -212,43 +256,43 @@ const Profile = () => {
   // Add a refresh function that can be called to reload the data
   const refreshProfileData = async () => {
     setLoading(true);
-    const token = localStorage.getItem("token");
     
-    if (!token) {
-      navigate("/login");
-      return;
-    }
-
     try {
-      // Fetch latest user data
-      const profileResponse = await axios.get(
-        config.api.getUrl('MAIN_API', '/api/auth/profile'),
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      // Fetch latest user data from API
+      const profileData = await fetchUserProfile();
+      if (!profileData) return;
       
-      setUser(profileResponse.data);
+      setUser(profileData);
       // Update form data with the latest values
       setFormData({
-        name: profileResponse.data.name,
-        age: profileResponse.data.age,
-        phoneNum: profileResponse.data.phoneNum,
-        Gender: profileResponse.data.Gender,
-        preferredStudyMethod: profileResponse.data.preferredStudyMethod,
-        dislikedLesson: profileResponse.data.dislikedLesson,
+        name: profileData.name,
+        age: profileData.age,
+        phoneNum: profileData.phoneNum,
+        Gender: profileData.Gender,
+        preferredStudyMethod: profileData.preferredStudyMethod,
+        dislikedLesson: profileData.dislikedLesson,
       });
 
-      if (profileResponse.data.stressLevel) {
-        setStressLevel(profileResponse.data.stressLevel);
-        localStorage.setItem("stressLevel", profileResponse.data.stressLevel);
-      }
-      if (profileResponse.data.stressProbability !== undefined) {
-        setStressProbability(profileResponse.data.stressProbability);
-        localStorage.setItem("stressProbability", profileResponse.data.stressProbability.toString());
+      // Always get stress level and cognitive performance from API
+      if (profileData.stressLevel) {
+        setStressLevel(profileData.stressLevel);
+      } else {
+        // Set default if not available from API
+        setStressLevel("Medium");
       }
 
-      const email = profileResponse.data.email;
+      if (profileData.stressProbability !== undefined) {
+        setStressProbability(profileData.stressProbability);
+      }
+
+      if (profileData.cognitivePerformance) {
+        setCognitivePerformance(profileData.cognitivePerformance);
+      } else {
+        // Set default if not available from API
+        setCognitivePerformance("Average");
+      }
+
+      const email = profileData.email;
 
       // Get the latest content preference (which includes the prediction)
       try {
@@ -311,70 +355,41 @@ const Profile = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem("token");
-      
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-
       try {
-        const profileResponse = await axios.get(
-          config.api.getUrl('MAIN_API', '/api/auth/profile'),
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const profileData = await fetchUserProfile();
+        if (!profileData) return;
         
-        setUser(profileResponse.data);
+        setUser(profileData);
         setFormData({
-          name: profileResponse.data.name,
-          age: profileResponse.data.age,
-          phoneNum: profileResponse.data.phoneNum,
-          Gender: profileResponse.data.Gender,
-          preferredStudyMethod: profileResponse.data.preferredStudyMethod,
-          dislikedLesson: profileResponse.data.dislikedLesson,
+          name: profileData.name,
+          age: profileData.age,
+          phoneNum: profileData.phoneNum,
+          Gender: profileData.Gender,
+          preferredStudyMethod: profileData.preferredStudyMethod,
+          dislikedLesson: profileData.dislikedLesson,
         });
 
-        // Check if there's a cognitive performance value from the API
-        const cogValue = profileResponse.data.cognitivePerformance || localStorage.getItem("cognitivePerformance") || "Average";
+        // Always get cognitive performance from API, set default if not available
+        const cogValue = profileData.cognitivePerformance || "Average";
         setCognitivePerformance(cogValue);
-        
-        // Store cognitive performance in localStorage for other components to use
-        localStorage.setItem("cognitivePerformance", cogValue);
 
-        // Get stress data from database first, then fallback to localStorage
-        const dbStressLevel = profileResponse.data.stressLevel;
-        const dbStressProbability = profileResponse.data.stressProbability;
+        // Always get stress data from API, set defaults if not available
+        const dbStressLevel = profileData.stressLevel || "Medium";
+        const dbStressProbability = profileData.stressProbability;
         
-        if (dbStressLevel) {
-          setStressLevel(dbStressLevel);
-          localStorage.setItem("stressLevel", dbStressLevel);
-        } else {
-          // Fallback to localStorage
-          const storedStressLevel = localStorage.getItem("stressLevel") || "Medium";
-          setStressLevel(storedStressLevel);
-        }
+        setStressLevel(dbStressLevel);
         
         if (dbStressProbability !== undefined && dbStressProbability !== null) {
           setStressProbability(dbStressProbability);
-          localStorage.setItem("stressProbability", dbStressProbability.toString());
-        } else {
-          // Fallback to localStorage
-          const storedStressProbability = localStorage.getItem("stressProbability");
-          if (storedStressProbability) {
-            setStressProbability(parseFloat(storedStressProbability));
-          }
         }
 
-        console.log("Stress data loaded:", {
-          dbStressLevel,
-          dbStressProbability,
-          finalStressLevel: dbStressLevel || localStorage.getItem("stressLevel"),
-          finalStressProbability: dbStressProbability || localStorage.getItem("stressProbability")
+        console.log("Stress data loaded from API:", {
+          stressLevel: dbStressLevel,
+          stressProbability: dbStressProbability,
+          cognitivePerformance: cogValue
         });
 
-        const email = profileResponse.data.email;
+        const email = profileData.email;
 
         // Fetch existing preferences
         try {
@@ -410,21 +425,15 @@ const Profile = () => {
         }
 
         // Make new predictions if applicable
-        if (profileResponse.data) {
-          await handleLessonPrediction(profileResponse.data);
-          await handlePeerPrediction(profileResponse.data);
+        if (profileData) {
+          await handleLessonPrediction(profileData);
+          await handlePeerPrediction(profileData);
         }
       } catch (err) {
         console.error("Error fetching data", err);
-        if (err.response && err.response.status === 401) {
-          setSnackbarMessage("Your session has expired. Please log in again.");
-          localStorage.removeItem("token");
-          setTimeout(() => navigate("/login"), 1000);
-        } else {
-          setSnackbarMessage("Failed to fetch data: " + (err.response?.data?.message || err.message));
-          setSnackbarSeverity("error");
-          setSnackbarOpen(true);
-        }
+        setSnackbarMessage("Failed to fetch data: " + (err.response?.data?.message || err.message));
+        setSnackbarSeverity("error");
+        setSnackbarOpen(true);
       }
     };
 
@@ -470,27 +479,36 @@ const Profile = () => {
     }
   };
 
-  const handleCognitivePerformanceChange = (value) => {
+  const handleCognitivePerformanceChange = async (value) => {
     setCognitivePerformance(value);
-    // Store in localStorage when changed
-    localStorage.setItem("cognitivePerformance", value);
+    
+    try {
+      // Update in API instead of localStorage
+      await updateUserPerformanceData({ cognitivePerformance: value });
+      
+      setSnackbarMessage("Cognitive performance updated successfully!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
+    } catch (error) {
+      console.error("Error updating cognitive performance:", error);
+      setSnackbarMessage("Failed to update cognitive performance");
+      setSnackbarSeverity("error");
+      setSnackbarOpen(true);
+    }
   };
 
   const handleStressLevelChange = async (selectedStressLevel) => {
     setStressLevel(selectedStressLevel);
-    // Store in localStorage when changed
-    localStorage.setItem("stressLevel", selectedStressLevel);
     
     setLoading(true);
 
     try {
-      const token = localStorage.getItem("token");
-      const profileResponse = await axios.get(
-        config.api.getUrl('MAIN_API', '/api/auth/profile'),
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      // Update stress level in API first
+      await updateUserPerformanceData({ stressLevel: selectedStressLevel });
+
+      // Fetch fresh profile data from API for predictions
+      const profileData = await fetchUserProfile();
+      if (!profileData) return;
 
       const marksFields = [
         "numberSequencesMarks",
@@ -507,7 +525,7 @@ const Profile = () => {
 
       const processedData = {};
       marksFields.forEach((field) => {
-        const marksArray = profileResponse.data[field];
+        const marksArray = profileData[field];
         const lastMark = marksArray && marksArray.length > 0 ? marksArray[marksArray.length - 1] : 0;
         processedData[field.replace(/([A-Z])/g, " $1").toLowerCase()] = lastMark;
       });
@@ -519,16 +537,20 @@ const Profile = () => {
       const predictedLesson = response.data.predicted_lesson;
       setPrediction(predictedLesson);
 
-      if (user?.email) {
+      if (profileData?.email) {
         await axios.post(config.api.getUrl('MAIN_API', '/api/content/save'), {
-          email: user.email,
+          email: profileData.email,
           preferences: predictedLesson,
           stressLevel: selectedStressLevel,
           cognitive: cognitivePerformance,
         });
       }
+
+      setSnackbarMessage("Stress level updated and predictions refreshed!");
+      setSnackbarSeverity("success");
+      setSnackbarOpen(true);
     } catch (error) {
-      setSnackbarMessage("Error making prediction or saving data. Please try again.");
+      setSnackbarMessage("Error updating stress level or making prediction. Please try again.");
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
       console.error(error);
@@ -871,7 +893,7 @@ const Profile = () => {
             )}
 
             {/* Peer Prediction - Left Side */}
-            {peerPrediction && (
+            {/* {peerPrediction && (
               <Card className="backdrop-blur-sm bg-gradient-to-r from-orange-100 to-orange-200 border-orange-300 shadow-lg">
                 <CardContent className="p-6">
                   <div className="flex items-center gap-3">
@@ -883,86 +905,47 @@ const Profile = () => {
                   </div>
                 </CardContent>
               </Card>
-            )}
+            )} */}
           </div>
 
           {/* Right Side: Preferences Display */}
           <div className="space-y-6">
-            {/* Content Preference */}
-            {contentPreference && (
-              <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5" />
-                    Content Preference
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="font-medium text-blue-900">Preferences</span>
-                      <Badge className="bg-blue-600 text-white">{contentPreference.preferences}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="font-medium text-blue-900">Stress Level</span>
-                      <Badge 
-                        variant="outline" 
-                        className={`${
-                          contentPreference.stressLevel === 'High' ? 'border-red-300 text-red-700' :
-                          contentPreference.stressLevel === 'Medium' ? 'border-yellow-300 text-yellow-700' :
-                          'border-green-300 text-green-700'
-                        }`}
-                      >
-                        {contentPreference.stressLevel}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="font-medium text-blue-900">Cognitive Performance</span>
-                      <Badge className="bg-purple-600 text-white">{contentPreference.cognitive}</Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Additional Controls */}
-            {/* <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-t-lg">
+            {/* Content Preference - Updated to include performance data */}
+            <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
+              <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
                 <CardTitle className="flex items-center gap-2">
                   <GraduationCap className="h-5 w-5" />
-                  Performance Settings
+                  Performance & Content Preferences
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6 space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-blue-900 font-medium">Cognitive Performance</Label>
-                  <Select value={cognitivePerformance} onValueChange={handleCognitivePerformanceChange}>
-                    <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                      <SelectValue placeholder="Select cognitive performance" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cognitivePerformanceOptions.map((option) => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {/* Content Preference */}
+                  {contentPreference && (
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="font-medium text-blue-900">Content Preferences</span>
+                      <Badge className="bg-blue-600 text-white">{contentPreference.preferences}</Badge>
+                    </div>
+                  )}
+                  
+                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                    <span className="font-medium text-blue-900">Cognitive Performance</span>
+                    <Badge className="bg-blue-600 text-white">{cognitivePerformance}</Badge>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label className="text-blue-900 font-medium">Stress Level</Label>
-                  <Select value={stressLevel} onValueChange={handleStressLevelChange}>
-                    <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                      <SelectValue placeholder="Select stress level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Low">Low</SelectItem>
-                      <SelectItem value="Medium">Medium</SelectItem>
-                      <SelectItem value="High">High</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Stress Level - Read Only Display */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                      <span className="font-medium text-blue-900">Stress Level</span>
+                      <Badge className="bg-blue-600 text-white">{stressLevel}</Badge>
+                    </div>
+                    {stressProbability !== null && (
+                      <p className="text-sm text-blue-600 ml-3">Stress Probability: {(stressProbability * 100).toFixed(1)}%</p>
+                    )}
+                  </div>
                 </div>
               </CardContent>
-            </Card> */}
+            </Card>
 
             {/* Peer Preference */}
             {peerPreference && (

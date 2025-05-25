@@ -1,31 +1,20 @@
-
 import React, { useState, useEffect } from "react";
-import {
-  TextField,
-  Button,
-  Container,
-  Typography,
-  MenuItem,
-  Grid,
-  Card,
-  CardContent,
-  CircularProgress,
-  Alert,
-  Box,
-  Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow
-} from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import config from '../config/index.js';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  AlertCircle,
+  CheckCircleIcon,
+  Loader2,
+  BookOpen,
+  User,
+  BarChart3,
+  BrainCircuit
+} from "lucide-react";
+import axios from "axios";
+import config from '../config';
 
 const LessonPrediction = () => {
   const navigate = useNavigate();
@@ -67,10 +56,6 @@ const LessonPrediction = () => {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // Define categorical options
-  const stressLevelOptions = ["Low", "Medium", "High"];
-  const cognitivePerformanceOptions = ["Low", "Average", "High", "Very High"];
-
   useEffect(() => {
     const fetchUserData = async () => {
       setUserLoading(true);
@@ -84,7 +69,7 @@ const LessonPrediction = () => {
       try {
         // Fetch user profile data
         const profileResponse = await axios.get(
-          "https://research-project-theta.vercel.app/api/auth/profile",
+          config.api.getUrl('MAIN_API', '/api/auth/profile'),
           {
             headers: { Authorization: `Bearer ${token}` },
           }
@@ -213,7 +198,7 @@ const LessonPrediction = () => {
 
       // We're using both APIs for predictions
       // 1. First, use the content preference API (stress + cognitive based)
-      const contentPredictUrl = "http://127.0.0.1:5003/predict";
+      const contentPredictUrl = config.api.getUrl('STRESS_API', '/predict');
       const contentResponse = await axios.post(contentPredictUrl, {
         stress_level: processedData.stress_level,
         cognitive_performance: processedData.cognitive_performance,
@@ -230,7 +215,7 @@ const LessonPrediction = () => {
       });
       
       // 2. Then, use the lesson prediction API (all data)
-      const lessonPredictUrl = "http://127.0.0.1:5001/predict";
+      const lessonPredictUrl = config.api.getUrl('LESSON_PREDICTION_API', '/predict');
       const lessonResponse = await axios.post(lessonPredictUrl, processedData);
       
       // Set the content-based prediction
@@ -243,7 +228,7 @@ const LessonPrediction = () => {
       // Save predictions if user is available
       if (user && user.email) {
         // Save content preference
-        await axios.post("https://research-project-theta.vercel.app/api/content/save", {
+        await axios.post(config.api.getUrl('MAIN_API', '/api/content/save'), {
           email: user.email,
           preferences: predictedLesson,
           stressLevel: formData.stress_level,
@@ -252,7 +237,7 @@ const LessonPrediction = () => {
         
         // Save lesson preferences
         if (lessonResponse.data["Top 5 Predicted Lessons"]) {
-          await axios.post("https://research-project-theta.vercel.app/api/lesson/save", {
+          await axios.post(config.api.getUrl('MAIN_API', '/api/lesson/save'), {
             email: user.email,
             preferences: lessonResponse.data["Top 5 Predicted Lessons"],
           });
@@ -269,105 +254,101 @@ const LessonPrediction = () => {
     }
   };
 
-  console.log("🔍 Current prediction state:", prediction);
-  console.log("🔍 prediction.topLessons:", prediction?.topLessons);
-  console.log("🔍 topLessons length:", prediction?.topLessons?.length);
-  if (prediction?.topLessons) {
-    prediction.topLessons.forEach((lesson, index) => {
-      console.log(`🔍 Lesson ${index}:`, lesson);
-    });
-  }
-
   if (userLoading) {
     return (
-      <Container sx={{ textAlign: "center", mt: 5 }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ mt: 2 }}>
+      <div className="container mx-auto text-center mt-16">
+        <div className="flex justify-center">
+          <Loader2 className="h-10 w-10 animate-spin text-blue-600" />
+        </div>
+        <h2 className="text-lg font-semibold mt-3 text-blue-800">
           Loading user data...
-        </Typography>
-      </Container>
+        </h2>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="lg" sx={{ mt: 5, mb: 5 }}>
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
-        <Typography variant="h4" align="center" gutterBottom>
-          Lesson Prediction
-        </Typography>
-        
-        <Typography variant="subtitle1" align="center" sx={{ mb: 4 }}>
-          Get personalized lesson recommendations based on your profile data
-        </Typography>
+    <div className="container mx-auto px-4 py-6 max-w-6xl">
+      <div className="bg-white rounded-lg shadow-lg p-6 border border-blue-100">
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-blue-800">Lesson Prediction</h1>
+          <p className="text-blue-600 text-sm">
+            Get personalized lesson recommendations based on your profile data
+          </p>
+        </div>
         
         {/* User Information */}
         {user && (
-          <Box sx={{ mb: 4, textAlign: 'center' }}>
-            <Typography variant="body2">
-              Logged in as: <strong>{user.email}</strong>
-            </Typography>
-          </Box>
+          <div className="mb-4 text-center">
+            <p className="text-sm text-gray-600">
+              Logged in as: <span className="font-semibold text-blue-700">{user.email}</span>
+            </p>
+          </div>
         )}
         
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
+          <Alert className="mb-4 border-red-200 bg-red-50">
+            <AlertCircle className="h-4 w-4 text-red-600" />
+            <AlertDescription className="text-red-800">
+              {error}
+            </AlertDescription>
           </Alert>
         )}
         
         {/* Profile Data Display */}
-        <Grid container spacing={4}>
-          {/* Personal Information */}
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Personal Information
-              </Typography>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Left Side: Personal Information & Performance */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                <User className="h-5 w-5" />
+                <h2 className="font-semibold">Personal Information</h2>
+              </div>
               
-              <TableContainer>
+              <div className="p-4">
                 <Table>
                   <TableBody>
                     <TableRow>
-                      <TableCell><strong>Name</strong></TableCell>
+                      <TableCell className="font-semibold text-blue-900">Name</TableCell>
                       <TableCell>{user?.name || "Not available"}</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell><strong>Age</strong></TableCell>
+                      <TableCell className="font-semibold text-blue-900">Age</TableCell>
                       <TableCell>{user?.age || "Not available"}</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell><strong>Gender</strong></TableCell>
+                      <TableCell className="font-semibold text-blue-900">Gender</TableCell>
                       <TableCell>{formData["Male/Female"] || "Not specified"}</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell><strong>Preferred Study Method</strong></TableCell>
+                      <TableCell className="font-semibold text-blue-900">Preferred Study Method</TableCell>
                       <TableCell>{formData["Preferred Study Method"] || "Not specified"}</TableCell>
                     </TableRow>
                     <TableRow>
-                      <TableCell><strong>Disliked Lesson</strong></TableCell>
+                      <TableCell className="font-semibold text-blue-900">Disliked Lesson</TableCell>
                       <TableCell>{formData["Disliked lesson"] || "None"}</TableCell>
                     </TableRow>
                   </TableBody>
                 </Table>
-              </TableContainer>
-            </Paper>
+              </div>
+            </div>
             
-            {/* Performance Data Table */}
-            <Paper elevation={2} sx={{ p: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Performance Data
-              </Typography>
+            <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                <h2 className="font-semibold">Performance Data</h2>
+              </div>
               
-              <TableContainer>
-                <Table size="small">
-                  <TableHead>
+              <div className="p-4">
+                <Table>
+                  <TableHeader>
                     <TableRow>
-                      <TableCell><strong>Lesson</strong></TableCell>
-                      <TableCell align="right"><strong>Marks</strong></TableCell>
-                      <TableCell align="right"><strong>Time (s)</strong></TableCell>
+                      <TableHead className="text-blue-900">Lesson</TableHead>
+                      <TableHead className="text-right text-blue-900">Marks</TableHead>
+                      <TableHead className="text-right text-blue-900">Time (s)</TableHead>
                     </TableRow>
-                  </TableHead>
-                  <TableBody style={{ textTransform: "capitalize" }}>
+                  </TableHeader>
+                  <TableBody className="capitalize">
                     {[
                       "number sequences",
                       "perimeter",
@@ -382,110 +363,113 @@ const LessonPrediction = () => {
                     ].map((lesson) => (
                       <TableRow key={lesson}>
                         <TableCell>{lesson}</TableCell>
-                        <TableCell align="right">{formData[`${lesson} marks`]}</TableCell>
-                        <TableCell align="right">{formData[`${lesson} time(s)`]}</TableCell>
+                        <TableCell className="text-right">{formData[`${lesson} marks`]}</TableCell>
+                        <TableCell className="text-right">{formData[`${lesson} time(s)`]}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
                 </Table>
-              </TableContainer>
-            </Paper>
-          </Grid>
+              </div>
+            </div>
+          </div>
           
-          {/* Assessment Information & Prediction */}
-          <Grid item xs={12} md={6}>
-            <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Assessment Information
-              </Typography>
+          {/* Right Side: Assessment & Prediction */}
+          <div className="space-y-4">
+            <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                <BrainCircuit className="h-5 w-5" />
+                <h2 className="font-semibold">Assessment Information</h2>
+              </div>
               
-              <Alert severity="info" sx={{ mb: 3 }}>
-                Your cognitive performance and stress level values are displayed below as read-only.
-              </Alert>
-              
-              <Box sx={{ mb: 3 }}>
-                <Grid container spacing={3}>
-                  {/* Stress Level */}
-                  <Grid item>
-                    <TableContainer component={Paper} variant="outlined">
-                      <Table size="small">
-                        <TableBody>
-                          <TableRow>
-                            <TableCell><strong>Stress Level</strong></TableCell>
-                            <TableCell>{formData.stress_level || "Not specified"}</TableCell>
-                          </TableRow>
-                          <TableCell style={{whiteSpace:"nowrap"}}><strong>Cognitive Performance</strong></TableCell>
-                          <TableCell style={{whiteSpace:"nowrap"}}>{formData.cognitive_performance || "Not specified"}</TableCell>
-                        </TableBody>
-                      </Table>
-                    </TableContainer>
-                  </Grid>                  
-                </Grid>
-              </Box>
-              
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleSubmit}
-                  disabled={loading || !formData.stress_level || !formData.cognitive_performance}
-                  sx={{ minWidth: 150 }}
-                >
-                  {loading ? <CircularProgress size={24} /> : "Get Prediction"}
-                </Button>
-              </Box>
-            </Paper>
+              <div className="p-4">
+                <Alert className="mb-4 bg-blue-50 border-blue-200">
+                  <AlertDescription>
+                    Your cognitive performance and stress level values are displayed below as read-only.
+                  </AlertDescription>
+                </Alert>
+                
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-white p-3 rounded-md border border-blue-100 text-center">
+                      <p className="text-sm text-gray-500 mb-1">Stress Level</p>
+                      <p className="text-lg font-bold text-blue-800">{formData.stress_level || "Not specified"}</p>
+                    </div>
+                    <div className="bg-white p-3 rounded-md border border-blue-100 text-center">
+                      <p className="text-sm text-gray-500 mb-1">Cognitive Performance</p>
+                      <p className="text-lg font-bold text-blue-800">{formData.cognitive_performance || "Not specified"}</p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-center mt-6">
+                  <Button
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+                    onClick={handleSubmit}
+                    disabled={loading || !formData.stress_level || !formData.cognitive_performance}
+                  >
+                    {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Get Prediction
+                  </Button>
+                </div>
+              </div>
+            </div>
             
             {/* Results Display */}
             {prediction && (
-              <Paper elevation={2} sx={{ p: 3 }}>
-                <Typography variant="h6" gutterBottom>
-                  Prediction Results
-                </Typography>
+              <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+                <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                  <BookOpen className="h-5 w-5" />
+                  <h2 className="font-semibold">Prediction Results</h2>
+                </div>
                 
-                <Alert severity="success" sx={{ mb: 3 }}>
-                  Your content and lesson preferences have been successfully determined!
-                </Alert>
-                
-                {/* Content-based prediction */}
-                <Card sx={{ mb: 3, bgcolor: '#e8f5e9' }}>
-                  <CardContent>
-                    <Typography variant="h6" color="primary" gutterBottom>
-                      Recommended Content Type:
-                    </Typography>
-                    <Typography variant="h5" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>
-                      {prediction.contentBased}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mt: 1 }}>
-                      Based on your cognitive performance ({formData.cognitive_performance}) 
-                      and current stress level ({formData.stress_level}).
-                    </Typography>
-                  </CardContent>
-                </Card>
-                
-                {/* Top 5 lessons */}
-                {prediction.topLessons && prediction.topLessons.length > 0 && (
-                  <Card sx={{ mb: 3, bgcolor: '#e3f2fd' }}>
-                    <CardContent>
-                      <Typography variant="h6" color="primary" gutterBottom>
-                        Top 5 Recommended Lessons:
-                      </Typography>
-                      
-                      <TableContainer>
-                        <Table size="small">
-                          <TableHead>
+                <div className="p-4">
+                  <Alert className="mb-4 bg-green-50 border-green-200">
+                    <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                    <AlertDescription className="text-green-800">
+                      Your content and lesson preferences have been successfully determined!
+                    </AlertDescription>
+                  </Alert>
+                  
+                  {/* Content-based prediction */}
+                  <Card className="mb-4 border-blue-200 bg-blue-50">
+                    <CardContent className="pt-6">
+                      <h3 className="text-lg font-bold text-blue-800 mb-2">
+                        Recommended Content Type:
+                      </h3>
+                      <div className="bg-white p-3 rounded-md border border-blue-100 text-center mb-2">
+                        <p className="text-xl font-bold text-blue-700">
+                          {prediction.contentBased}
+                        </p>
+                      </div>
+                      <p className="text-sm text-blue-600">
+                        Based on your cognitive performance ({formData.cognitive_performance}) 
+                        and current stress level ({formData.stress_level}).
+                      </p>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Top 5 lessons */}
+                  {prediction.topLessons && prediction.topLessons.length > 0 && (
+                    <Card className="mb-4 border-blue-200">
+                      <CardContent className="pt-6">
+                        <h3 className="text-lg font-bold text-blue-800 mb-2">
+                          Top 5 Recommended Lessons:
+                        </h3>
+                        
+                        <Table>
+                          <TableHeader>
                             <TableRow>
-                              <TableCell><strong>Rank</strong></TableCell>
-                              <TableCell><strong>Lesson</strong></TableCell>
-                              <TableCell align="right"><strong>Score</strong></TableCell>
+                              <TableHead className="text-blue-900">Rank</TableHead>
+                              <TableHead className="text-blue-900">Lesson</TableHead>
+                              <TableHead className="text-right text-blue-900">Score</TableHead>
                             </TableRow>
-                          </TableHead>
+                          </TableHeader>
                           <TableBody>
                             {prediction.topLessons.map((lesson, index) => (
                               <TableRow key={index}>
-                                <TableCell>{index + 1}</TableCell>
+                                <TableCell className="font-medium">{index + 1}</TableCell>
                                 <TableCell>{lesson.lesson}</TableCell>
-                                <TableCell align="right">
+                                <TableCell className="text-right">
                                   {typeof lesson.probability === 'number' 
                                     ? lesson.probability.toFixed(2) 
                                     : lesson.probability}
@@ -494,34 +478,33 @@ const LessonPrediction = () => {
                             ))}
                           </TableBody>
                         </Table>
-                      </TableContainer>
-                    </CardContent>
-                  </Card>
-                )}
-                
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3 }}>
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => navigate("/filtered")}
-                  >
-                    View Recommended Courses
-                  </Button>
+                      </CardContent>
+                    </Card>
+                  )}
                   
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={() => navigate("/profile")}
-                  >
-                    Back to Profile
-                  </Button>
-                </Box>
-              </Paper>
+                  <div className="flex flex-col sm:flex-row justify-between gap-4 mt-4">
+                    <Button
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={() => navigate("/filtered")}
+                    >
+                      View Recommended Courses
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                      onClick={() => navigate("/profile")}
+                    >
+                      Back to Profile
+                    </Button>
+                  </div>
+                </div>
+              </div>
             )}
-          </Grid>
-        </Grid>
-      </Paper>
-    </Container>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

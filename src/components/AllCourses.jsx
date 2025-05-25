@@ -1,21 +1,12 @@
 import React, { useEffect, useState } from "react";
-import {
-  Typography,
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  TextField,
-  Box,
-  Paper,
-  Button,
-  Alert,
-  CircularProgress,
-  Chip
-} from "@mui/material";
-import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import axios from "axios";
 
 const AllCourse = () => {
   const [courses, setCourses] = useState([]);
@@ -150,115 +141,89 @@ const AllCourse = () => {
   // Loading state
   if (loading) {
     return (
-      <Container sx={{ textAlign: "center", mt: 10 }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ mt: 2 }}>
+      <div className="container mx-auto text-center mt-24">
+        <div className="flex justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        </div>
+        <h2 className="text-xl font-semibold mt-4">
           Loading courses...
-        </Typography>
-      </Container>
+        </h2>
+      </div>
     );
   }
 
   return (
-    <Container sx={{ textAlign: "center", mt: 5 }}>
-      <Typography variant="h3" gutterBottom>
-        Edu Platform
-      </Typography>
-      <Typography variant="subtitle1" gutterBottom>
+    <div className="container mx-auto px-4 py-8 text-center">
+      <h1 className="text-4xl font-bold mb-2">Smart Steps</h1>
+      <p className="text-gray-600 mb-8">
         Welcome to the best online education platform!
-      </Typography>
+      </p>
 
       {/* Banner for quiz completion status */}
       {isLoggedIn && (
-        <Paper 
-          elevation={3} 
-          sx={{ 
-            mt: 4, 
-            p: 3, 
-            backgroundColor: quizProgress.completed === quizProgress.total ? "#e8f5e9" : "#fff3e0",
-            borderRadius: 2
-          }}
-        >
-          <Box sx={{ display: "flex", flexDirection: { xs: "column", md: "row" }, alignItems: "center", justifyContent: "space-between" }}>
-            <Box sx={{ mb: { xs: 2, md: 0 } }}>
-              <Typography variant="h6" gutterBottom>
+        <div className={`rounded-lg shadow-md p-6 mb-8 ${
+          quizProgress.completed === quizProgress.total ? "bg-blue-50 border border-blue-200" : "bg-amber-50 border border-amber-200"
+        }`}>
+          <div className="flex flex-col md:flex-row items-center justify-between">
+            <div className="mb-4 md:mb-0">
+              <h2 className="text-xl font-semibold mb-2">
                 {quizProgress.completed === quizProgress.total 
                   ? "All quizzes completed! You can now get personalized lesson predictions." 
                   : `Complete all ${quizProgress.total} quizzes to unlock personalized lesson predictions.`}
-              </Typography>
-              <Typography variant="body1" component="div">
-                Progress: {quizProgress.completed} / {quizProgress.total} quizzes
-                <Box sx={{ display: "flex", alignItems: "center", mt: 1 }}>
-                  <Box
-                    sx={{
-                      width: "100%",
-                      bgcolor: "grey.300",
-                      borderRadius: 1,
-                      mr: 2,
-                      height: 10
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        width: `${(quizProgress.completed / quizProgress.total) * 100}%`,
-                        bgcolor: quizProgress.completed === quizProgress.total ? "success.main" : "warning.main",
-                        height: 10,
-                        borderRadius: 1
-                      }}
+              </h2>
+              <div>
+                <p className="mb-1">Progress: {quizProgress.completed} / {quizProgress.total} quizzes</p>
+                <div className="flex items-center">
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 mr-2">
+                    <Progress 
+                      value={(quizProgress.completed / quizProgress.total) * 100} 
+                      className="h-2.5 rounded-full" 
+                      indicatorClassName={quizProgress.completed === quizProgress.total 
+                        ? "bg-blue-600" 
+                        : "bg-amber-500"}
                     />
-                  </Box>
-                  <Typography variant="body2" sx={{ minWidth: 40 }}>
+                  </div>
+                  <span className="text-sm min-w-[40px]">
                     {Math.round((quizProgress.completed / quizProgress.total) * 100)}%
-                  </Typography>
-                </Box>
-              </Typography>
-            </Box>
+                  </span>
+                </div>
+              </div>
+            </div>
             <Button
-              variant="contained"
-              color={quizProgress.completed === quizProgress.total ? "primary" : "inherit"}
+              className={quizProgress.completed === quizProgress.total 
+                ? "bg-blue-600 hover:bg-blue-700 text-white" 
+                : "bg-gray-200 text-gray-500"}
+              size="lg"
               onClick={handleLessonPredictionClick}
               disabled={quizProgress.completed !== quizProgress.total}
-              sx={{ 
-                px: 3, 
-                py: 1.5,
-                boxShadow: quizProgress.completed === quizProgress.total ? 2 : 0
-              }}
             >
               {quizProgress.completed === quizProgress.total ? "Get Lesson Prediction" : "Complete All Quizzes First"}
             </Button>
-          </Box>
-        </Paper>
+          </div>
+        </div>
       )}
 
       {/* Search Bar */}
-      <TextField
-        fullWidth
-        variant="outlined"
-        placeholder="Search quizzes..."
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        sx={{ mt: 4, mb: 4 }}
-      />
-
-      {/* Display debug information during development */}
-      {/* <Box sx={{ mb: 4, textAlign: "left", p: 2, border: "1px solid #ddd" }}>
-        <Typography variant="subtitle2">Debug Info:</Typography>
-        <Typography variant="body2">Total courses: {courses.length}</Typography>
-        <Typography variant="body2">Filtered quizzes: {filteredQuizzes.length}</Typography>
-      </Box> */}
+      <div className="mb-8">
+        <Input
+          className="max-w-xl mx-auto"
+          placeholder="Search quizzes..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
 
       {/* Display Quizzes Only */}
-      <Typography variant="h4" sx={{ mt: 4, mb: 2 }}>
-        Quizzes
-      </Typography>
+      <h2 className="text-2xl font-bold mt-10 mb-6">Quizzes</h2>
+      
       {filteredQuizzes.length === 0 ? (
-        <Box sx={{ p: 4, textAlign: "center" }}>
-          <Typography variant="h6" color="text.secondary">
+        <div className="p-8 text-center">
+          <p className="text-xl text-gray-500">
             No quizzes found matching your search criteria.
-          </Typography>
-        </Box>
+          </p>
+        </div>
       ) : (
-        <Grid container spacing={3}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredQuizzes.map((course) => {
             // Determine if this quiz has been completed by checking the user's marks
             let quizFieldName = null;
@@ -284,73 +249,62 @@ const AllCourse = () => {
             const isCompleted = user && quizFieldName && user[quizFieldName] && user[quizFieldName].length > 0;
             
             return (
-              <Grid item key={course._id} xs={12} sm={6} md={3}>
-                <Card
-                  sx={{
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                    cursor: isLoggedIn ? "pointer" : "default",
-                    opacity: isLoggedIn ? 1 : 0.7,
-                    position: "relative",
-                    transition: "transform 0.2s, box-shadow 0.2s",
-                    border: isCompleted ? "1px solid #4caf50" : "1px solid transparent",
-                    "&:hover": {
-                      transform: isLoggedIn ? "translateY(-4px)" : "none",
-                      boxShadow: isLoggedIn ? 4 : 1
-                    }
-                  }}
-                  onClick={() => handleCardClick(course._id, false)}
-                >
-                  {/* Completed badge */}
-                  {isCompleted && (
-                    <Chip
-                      label="Completed"
-                      color="success"
-                      size="small"
-                      sx={{
-                        position: "absolute",
-                        top: 10,
-                        right: 10,
-                        zIndex: 1
-                      }}
+              <Card
+                key={course._id}
+                className={`h-full overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                  isLoggedIn ? "opacity-100 hover:-translate-y-1" : "opacity-70"
+                } ${isCompleted ? "border-green-400 border-2" : ""}`}
+                onClick={() => handleCardClick(course._id, false)}
+              >
+                {/* Completed badge */}
+                {isCompleted && (
+                  <Badge 
+                    className="absolute top-2 right-2 bg-green-500 z-10"
+                  >
+                    Completed
+                  </Badge>
+                )}
+                
+                <div className="h-32 bg-blue-100 relative overflow-hidden">
+                  {course.image ? (
+                    <img 
+                      src={course.image} 
+                      alt={course.lessonName}
+                      className="w-full h-full object-cover"
                     />
-                  )}
-                  <CardMedia
-                    component="img"
-                    height="120"
-                    image={course.image || `https://via.placeholder.com/300/2196f3/ffffff?text=${encodeURIComponent(course.lessonName)}`}
-                    alt={course.lessonName}
-                  />
-                  <CardContent sx={{ flexGrow: 1 }}>
-                    <Typography gutterBottom variant="h6" component="div">
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-blue-500 text-white font-semibold">
                       {course.lessonName}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                      {course.description}
-                    </Typography>
-                    <Box 
-                      sx={{ 
-                        mt: 2,
-                        display: "flex",
-                        justifyContent: "center"
-                      }}
-                    >
-                      <Chip
-                        label={isCompleted ? "Retry Quiz" : "Start Quiz"}
-                        color={isCompleted ? "secondary" : "primary"}
-                        variant={isCompleted ? "outlined" : "filled"}
-                        size="small"
-                      />
-                    </Box>
-                  </CardContent>
-                </Card>
-              </Grid>
+                    </div>
+                  )}
+                </div>
+                
+                <CardContent className="flex-grow p-4">
+                  <h3 className="text-lg font-semibold mb-2">
+                    {course.lessonName}
+                  </h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    {course.description}
+                  </p>
+                </CardContent>
+                
+                <CardFooter className="flex justify-center p-4 pt-0">
+                  <Badge 
+                    className={`${
+                      isCompleted 
+                        ? "bg-white text-blue-600 border border-blue-600" 
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                  >
+                    {isCompleted ? "Retry Quiz" : "Start Quiz"}
+                  </Badge>
+                </CardFooter>
+              </Card>
             );
           })}
-        </Grid>
+        </div>
       )}
-    </Container>
+    </div>
   );
 };
 

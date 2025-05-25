@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import axios from "axios";
+import config from "../config/index";
 
 // shadcn/ui components
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -22,8 +23,10 @@ const Home = () => {
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [cognitivePerformance, setCognitivePerformance] = useState("");
+  const [stressLevel, setStressLevel] = useState("");
+  const [stressProbability, setStressProbability] = useState(null);
 
-  // Fetch all user assessment data
   useEffect(() => {
     const fetchAssessmentData = async () => {
       if (userLoading) return;
@@ -35,21 +38,52 @@ const Home = () => {
 
       try {
         setLoading(true);
-        const email = user.email;
+        const token = localStorage.getItem("token");
         
+        if (!token) {
+          navigate("/login");
+          return;
+        }
+
+        // Fetch fresh profile data from API
+        const profileResponse = await axios.get(
+          config.api.getUrl('MAIN_API', '/api/auth/profile'),
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+
+        const userData = profileResponse.data;
+        const email = userData.email;
+
+        // Handle cognitive performance from database only
+        const cogValue = userData.cognitivePerformance;
+        setCognitivePerformance(cogValue || "");
+
+        // Handle stress data from database only
+        const dbStressLevel = userData.stressLevel;
+        const dbStressProbability = userData.stressProbability;
+        
+        setStressLevel(dbStressLevel || "");
+        setStressProbability(dbStressProbability || null);
+
+        console.log("Home - Stress data loaded:", {
+          dbStressLevel,
+          dbStressProbability
+        });
+
         // Check if cognitive assessment is completed
-        const cognitiveCompleted = user.cognitivePerformance ? true : false;
+        const cognitiveCompleted = !!cogValue;
         
-        // Check stress level from local storage
-        const stressLevel = localStorage.getItem("stressLevel");
-        const stressCompleted = stressLevel ? true : false;
+        // Check stress level completion
+        const stressCompleted = !!dbStressLevel;
         
         // Fetch content preferences
         let contentData = null;
         let contentCompleted = false;
         try {
           const contentResponse = await axios.get(
-            `https://research-project-theta.vercel.app/api/content?email=${email}`
+            `${config.api.getUrl('MAIN_API', '/api/content')}?email=${email}`
           );
           contentData = contentResponse.data;
           contentCompleted = true;
@@ -62,7 +96,7 @@ const Home = () => {
         let lessonCompleted = false;
         try {
           const lessonResponse = await axios.get(
-            `https://research-project-theta.vercel.app/api/lesson?email=${email}`
+            `${config.api.getUrl('MAIN_API', '/api/lesson')}?email=${email}`
           );
           lessonData = lessonResponse.data;
           lessonCompleted = lessonData && lessonData.preferences && lessonData.preferences.length > 0;
@@ -70,15 +104,15 @@ const Home = () => {
           console.log("Lesson preference not found");
         }
         
-        // Update assessment status
+        // Update assessment status with the latest data
         setAssessmentStatus({
           cognitive: { 
             completed: cognitiveCompleted, 
-            data: cognitiveCompleted ? { level: user.cognitivePerformance } : null 
+            data: cognitiveCompleted ? { level: cogValue } : null 
           },
           stress: { 
             completed: stressCompleted, 
-            data: stressCompleted ? { level: stressLevel } : null 
+            data: stressCompleted ? { level: dbStressLevel } : null 
           },
           content: { 
             completed: contentCompleted, 
@@ -93,13 +127,19 @@ const Home = () => {
       } catch (error) {
         console.error("Error fetching assessment data:", error);
         setError("Failed to fetch your assessment data. Please try again.");
+        
+        // Handle authentication errors
+        if (error.response && error.response.status === 401) {
+          localStorage.removeItem("token");
+          setTimeout(() => navigate("/login"), 1000);
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchAssessmentData();
-  }, [user, userLoading, isAuthenticated]);
+  }, [user, userLoading, isAuthenticated, navigate]);
 
   // Calculate overall completion percentage
   const calculateCompletionPercentage = () => {
@@ -149,7 +189,7 @@ const Home = () => {
       title: "Content Preference",
       description: "Tell us about your learning preferences to get personalized recommendations.",
       image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=500",
-      path: "/content-prediction",
+      path: "/all",
       status: assessmentStatus.content,
       icon: BookOpen,
       color: "from-blue-500 to-blue-600",
@@ -196,7 +236,7 @@ const Home = () => {
           </div>
           
           <h1 className="text-6xl font-bold bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 bg-clip-text text-transparent mb-6">
-            Welcome to Edu Platform
+            Welcome to Smart Steps
           </h1>
           <p className="text-xl text-slate-600 mb-8 max-w-3xl mx-auto leading-relaxed">
             Your personalized journey to stress management and enhanced learning. 
@@ -218,6 +258,13 @@ const Home = () => {
                         Welcome back, {user?.name || "Learner"}!
                       </h3>
                       <p className="text-slate-500 text-sm">Continue your learning journey</p>
+                      {/* Debug info to see current values */}
+                      {cognitivePerformance && (
+                        <p className="text-xs text-blue-600">Cognitive: {cognitivePerformance}</p>
+                      )}
+                      {stressLevel && (
+                        <p className="text-xs text-green-600">Stress: {stressLevel}</p>
+                      )}
                     </div>
                   </div>
                   <div className="text-3xl">👋</div>
@@ -409,39 +456,7 @@ const Home = () => {
               );
             })}
           </div>
-        </div>
-
-        {/* Educational Content Access */}
-        {/* {isAuthenticated && currentStep >= 5 && (
-          <Card className="text-center p-12 bg-gradient-to-r from-green-50 to-blue-50 border-0 shadow-xl">
-            <div className="text-8xl mb-6">🎉</div>
-            <h2 className="text-4xl font-bold text-slate-900 mb-6">
-              Congratulations! Journey Complete
-            </h2>
-            <p className="text-slate-600 mb-8 max-w-3xl mx-auto text-lg leading-relaxed">
-              You've successfully completed all assessments. Now unlock your personalized educational 
-              experience with content tailored specifically to your learning style and needs.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button
-                size="lg"
-                onClick={() => navigate("/dashboard")}
-                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
-              >
-                <TrendingUp className="h-5 w-5 mr-2" />
-                View Dashboard
-              </Button>
-              <Button
-                variant="outline"
-                size="lg"
-                onClick={() => navigate("/all")}
-              >
-                <BookOpen className="h-5 w-5 mr-2" />
-                Browse All Courses
-              </Button>
-            </div>
-          </Card>
-        )} */}
+        </div>        
 
         {/* Benefits Section */}
         <Card className="p-12 bg-white/90 backdrop-blur-sm border-0 shadow-xl">

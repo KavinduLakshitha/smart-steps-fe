@@ -1,16 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Typography,
-  Container,
-  Box,
-  Button,
-  Paper,
-  TextField,
-  Card,
-  CardContent,
-  Link
-} from "@mui/material";
 import { useNavigate } from "react-router-dom";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 const RainDrops = () => {
   const navigate = useNavigate();
@@ -28,46 +21,46 @@ const RainDrops = () => {
   const yellowQuestionSpawned11000 = useRef(false);
   
   useEffect(() => {
-  // Create or update the assessmentResult object in localStorage
-  try {
-    const resultData = localStorage.getItem('assessmentResult');
-    if (resultData) {
-      // If result exists, parse it
-      const parsedData = JSON.parse(resultData);
-      console.log("Initial assessmentResult found:", parsedData);
-      
-      // Only initialize p_M to "0" if it doesn't exist AND there's no existing game score
-      if (!parsedData.p_M) {
-        // Check if there's a saved game score
-        const savedGameScore = localStorage.getItem('Rain_drops_score');
-        if (savedGameScore && savedGameScore !== '0') {
-          // Use the saved game score instead of setting to 0
-          parsedData.p_M = savedGameScore;
-          console.log("Using existing game score:", savedGameScore);
-        } else {
-          // No existing score, set to 0
-          parsedData.p_M = "0";
-          console.log("No existing score, setting p_M to 0");
+    // Create or update the assessmentResult object in localStorage
+    try {
+      const resultData = localStorage.getItem('assessmentResult');
+      if (resultData) {
+        // If result exists, parse it
+        const parsedData = JSON.parse(resultData);
+        console.log("Initial assessmentResult found:", parsedData);
+        
+        // Only initialize p_M to "0" if it doesn't exist AND there's no existing game score
+        if (!parsedData.p_M) {
+          // Check if there's a saved game score
+          const savedGameScore = localStorage.getItem('Rain_drops_score');
+          if (savedGameScore && savedGameScore !== '0') {
+            // Use the saved game score instead of setting to 0
+            parsedData.p_M = savedGameScore;
+            console.log("Using existing game score:", savedGameScore);
+          } else {
+            // No existing score, set to 0
+            parsedData.p_M = "0";
+            console.log("No existing score, setting p_M to 0");
+          }
+          localStorage.setItem('assessmentResult', JSON.stringify(parsedData));
         }
-        localStorage.setItem('assessmentResult', JSON.stringify(parsedData));
+      } else {
+        // Create a new assessmentResult if it doesn't exist
+        // But first check if there's a saved game score
+        const savedGameScore = localStorage.getItem('Rain_drops_score');
+        const newResult = {
+          p_M: savedGameScore && savedGameScore !== '0' ? savedGameScore : "0",
+          person_memory: "0", 
+          person_speed: "0",
+          result: ""
+        };
+        localStorage.setItem('assessmentResult', JSON.stringify(newResult));
+        console.log("Created new assessmentResult:", newResult);
       }
-    } else {
-      // Create a new assessmentResult if it doesn't exist
-      // But first check if there's a saved game score
-      const savedGameScore = localStorage.getItem('Rain_drops_score');
-      const newResult = {
-        p_M: savedGameScore && savedGameScore !== '0' ? savedGameScore : "0",
-        person_memory: "0", 
-        person_speed: "0",
-        result: ""
-      };
-      localStorage.setItem('assessmentResult', JSON.stringify(newResult)); // FIXED: using newResult instead of undefined parsedData
-      console.log("Created new assessmentResult:", newResult);
+    } catch (error) {
+      console.error("Error initializing assessmentResult:", error);
     }
-  } catch (error) {
-    console.error("Error initializing assessmentResult:", error);
-  }
-}, []);
+  }, []);
   
   // Generate a math problem
   const generateProblem = () => {
@@ -125,13 +118,17 @@ const RainDrops = () => {
       drop.style.top = "0px";
       drop.dataset.id = problem.id;
       
-      // Raindrop styling
+      // Raindrop styling with Tailwind classes as inline styles
       drop.style.position = "absolute";
       drop.style.fontSize = "20px";
       drop.style.fontWeight = "bold";
-      drop.style.color = problem.isYellow ? "gold" : "darkblue";
+      drop.style.color = problem.isYellow ? "#FFD700" : "#00008B";
+      drop.style.backgroundColor = problem.isYellow ? "rgba(255, 215, 0, 0.2)" : "rgba(255, 255, 255, 0.7)";
+      drop.style.padding = "8px";
+      drop.style.borderRadius = "999px";
       if (problem.isYellow) {
         drop.style.textShadow = "1px 1px 2px black";
+        drop.style.boxShadow = "0 0 10px rgba(255, 215, 0, 0.5)";
       }
       
       gameContainer.appendChild(drop);
@@ -332,51 +329,39 @@ const RainDrops = () => {
   };
   
   return (
-    <Container maxWidth="md">
-      <Box sx={{ my: 5, textAlign: "center" }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          Raindrop Math Game
-        </Typography>
-        <Typography variant="subtitle1" gutterBottom>
+    <div className="container mx-auto px-4 py-8 max-w-3xl">
+      <div className="my-8 text-center">
+        <h1 className="text-4xl font-bold mb-2">Raindrop Math Game</h1>
+        <p className="text-gray-600">
           Solve math problems in falling raindrops before they reach the bottom!
-        </Typography>
-      </Box>
+        </p>
+      </div>
       
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2, mb: 5, textAlign: "center" }}>
-        <Typography variant="h6" gutterBottom>
-          Score: {score} | Missed: {missed}
-        </Typography>
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-8 text-center">
+        <div className="font-semibold text-lg mb-2">
+          Score: <span className="text-blue-600">{score}</span> | Missed: <span className="text-red-600">{missed}</span>
+        </div>
         
-        <Box 
+        <div 
           ref={gameContainerRef} 
-          sx={{ 
-            position: "relative", 
-            width: "300px", 
-            height: "400px", 
-            border: "2px solid black", 
-            backgroundColor: "#add8e6", 
-            margin: "20px auto", 
-            overflow: "hidden" 
-          }}
+          className="relative w-[300px] h-[400px] border-2 border-gray-800 bg-sky-200 mx-auto my-5 overflow-hidden rounded-md"
         >
           {/* Raindrops will be dynamically added here */}
-        </Box>
+        </div>
         
-        <form onSubmit={handleSubmit}>
-          <TextField
-            variant="outlined"
+        <form onSubmit={handleSubmit} className="flex justify-center gap-2 mt-4">
+          <Input
+            className="max-w-[200px]"
             placeholder="Enter answer"
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
             type="number"
-            InputProps={{ inputProps: { step: "any" } }}
+            step="any"
             disabled={gameOver}
-            sx={{ mr: 2 }}
           />
           <Button 
             type="submit" 
-            variant="contained" 
-            color="primary"
+            variant="default"
             disabled={gameOver || !userInput}
           >
             Submit
@@ -384,59 +369,54 @@ const RainDrops = () => {
         </form>
         
         {gameOver && (
-          <Box sx={{ mt: 4, p: 2, bgcolor: "#f9f9f9", borderRadius: 2 }}>
-            <Typography variant="h5" color="error.main" gutterBottom>
+          <Alert className="mt-6 bg-gray-50 border border-gray-200">
+            <AlertTitle className="text-xl font-bold text-red-600">
               Game Over!
-            </Typography>
-            <Typography variant="body1" fontWeight="bold">
-              You survived for {survivalTime} minutes!
-            </Typography>
-            <Typography variant="body1">
-              Final Score: {score}
-            </Typography>
-            
-            <Box sx={{ mt: 3 }}>
-              <Button 
-                variant="contained" 
-                color="primary" 
-                component={Link}
-                onClick={handleNavigateToCognitive}
-                sx={{ mx: 1 }}
-              >
-                Back to Assessment
-              </Button>
-              <Button 
-                variant="outlined" 
-                color="primary" 
-                onClick={() => window.location.reload()}
-                sx={{ mx: 1 }}
-              >
-                Play Again
-              </Button>
-            </Box>
-          </Box>
+            </AlertTitle>
+            <AlertDescription>
+              <p className="font-semibold mb-1">
+                You survived for {survivalTime} minutes!
+              </p>
+              <p className="mb-4">
+                Final Score: {score}
+              </p>
+              
+              <div className="flex justify-center gap-3 mt-4">
+                <Button 
+                  variant="default" 
+                  onClick={handleNavigateToCognitive}
+                >
+                  Back to Assessment
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => window.location.reload()}
+                >
+                  Play Again
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
         )}
-      </Paper>
+      </div>
       
-      <Card sx={{ mb: 5 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
+      <Card className="mb-8">
+        <CardContent className="pt-6">
+          <h2 className="text-xl font-semibold mb-2">
             How to Play:
-          </Typography>
-          <Typography variant="body2" component="div">
-            <ol style={{ textAlign: "left" }}>
-              <li>Math problems will fall from the top of the screen as raindrops.</li>
-              <li>Solve each problem and type the answer in the input box.</li>
-              <li>Press submit or enter to check your answer.</li>
-              <li>Each correct answer earns you 500 points.</li>
-              <li>If a raindrop reaches the bottom without being solved, you miss one point.</li>
-              <li>The game ends after you miss 2 problems.</li>
-              <li>Special yellow problems will appear at certain score milestones. Solving these will clear all current raindrops!</li>
-            </ol>
-          </Typography>
+          </h2>
+          <ol className="text-left space-y-1 list-decimal pl-5">
+            <li>Math problems will fall from the top of the screen as raindrops.</li>
+            <li>Solve each problem and type the answer in the input box.</li>
+            <li>Press submit or enter to check your answer.</li>
+            <li>Each correct answer earns you 500 points.</li>
+            <li>If a raindrop reaches the bottom without being solved, you miss one point.</li>
+            <li>The game ends after you miss 2 problems.</li>
+            <li>Special yellow problems will appear at certain score milestones. Solving these will clear all current raindrops!</li>
+          </ol>
         </CardContent>
       </Card>
-    </Container>
+    </div>
   );
 };
 

@@ -1,19 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
-import {
-  Typography,
-  Container,
-  Box,
-  Button,
-  Paper,
-  Grid,
-  Card,
-  CardContent,
-  Link
-} from "@mui/material";
-import { useNavigate } from "react-router-dom";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 const SpeedMatch = () => {
-  const navigate = useNavigate();
   const canvasRef = useRef(null);
   const [score, setScore] = useState(0);
   const [timeLeft, setTimeLeft] = useState(45);
@@ -148,127 +138,141 @@ const SpeedMatch = () => {
   }, [gameOver, score, totalMatches]);
 
   const handleNavigateToCognitive = () => {
-    navigate("/cognitive");
+    window.location.href = "/cognitive";
   };
   
   return (
-    <Container maxWidth="md">
-      <Box sx={{ my: 5, textAlign: "center" }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          Speed Match Game
-        </Typography>
-      </Box>
-      
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2, mb: 5, textAlign: "center" }}>
-        <Typography variant="h6" gutterBottom>
-          {message}
-        </Typography>
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 p-4">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent mb-4">
+            Speed Match Game
+          </h1>
+          <p className="text-lg text-gray-600">Test your visual memory and reaction speed!</p>
+        </div>
         
-        <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-          <canvas 
-            ref={canvasRef} 
-            width={400} 
-            height={400} 
-            style={{ 
-              border: "2px solid black", 
-              backgroundColor: "white", 
-              borderRadius: "8px" 
-            }}
-          />
-        </Box>
-        
-        <Grid container spacing={2} justifyContent="center">
-          <Grid item>
-            <Button 
-              variant="contained" 
-              color="primary" 
-              size="large" 
-              onClick={() => handleMatchCheck(true)}
-              disabled={gameOver}
-            >
-              Match
-            </Button>
-          </Grid>
-          <Grid item>
-            <Button 
-              variant="contained" 
-              color="secondary" 
-              size="large" 
-              onClick={() => handleMatchCheck(false)}
-              disabled={gameOver}
-            >
-              No Match
-            </Button>
-          </Grid>
-        </Grid>
-        
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="h6">
-            Score: {score}
-          </Typography>
-          <Typography variant="h6">
-            Time Left: {timeLeft}s
-          </Typography>
-        </Box>
-        
-        {gameOver && (
-          <Box sx={{ mt: 4, p: 2, bgcolor: "#f9f9f9", borderRadius: 2 }}>
-            <Typography variant="h5" gutterBottom>
-              Game Over!
-            </Typography>
-            <Typography variant="body1">
-              Final Score: {score}
-            </Typography>
-            <Typography variant="body1">
-              Total Matches: {totalMatches}
-            </Typography>
-            <Typography variant="body1">
-              Correct Matches: {correctMatches}
-            </Typography>
-            <Typography variant="body1">
-              Accuracy: {totalMatches > 0 ? Math.round((correctMatches / totalMatches) * 100) : 0}%
-            </Typography>
+        <Card className="mb-8 shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
+          <CardHeader className="text-center pb-4">
+            <CardTitle className="text-xl font-semibold text-gray-800">
+              {message}
+            </CardTitle>
+            <div className="flex justify-center gap-4 mt-4">
+              <Badge variant="secondary" className="text-lg px-4 py-2">
+                Score: {score}
+              </Badge>
+              <Badge variant={timeLeft <= 10 ? "destructive" : "default"} className="text-lg px-4 py-2">
+                Time: {timeLeft}s
+              </Badge>
+            </div>
+          </CardHeader>
+          
+          <CardContent className="text-center">
+            <div className="flex justify-center mb-6">
+              <canvas 
+                ref={canvasRef} 
+                width={400} 
+                height={400} 
+                className="border-4 border-gray-300 rounded-xl bg-white shadow-inner"
+              />
+            </div>
             
-            <Box sx={{ mt: 3 }}>
+            <div className="flex justify-center gap-4 mb-6">
               <Button 
-                variant="contained" 
-                color="primary" 
-                component={Link}
-                onClick={handleNavigateToCognitive}
-                sx={{ mx: 1 }}
+                size="lg" 
+                onClick={() => handleMatchCheck(true)}
+                disabled={gameOver}
+                className="px-8 py-3 text-lg font-semibold bg-green-600 hover:bg-green-700 transform hover:scale-105 transition-all duration-200 shadow-lg"
               >
-                Back to Assessment
+                Match
               </Button>
               <Button 
-                variant="outlined" 
-                color="primary" 
-                onClick={() => window.location.reload()}
-                sx={{ mx: 1 }}
+                size="lg" 
+                variant="destructive"
+                onClick={() => handleMatchCheck(false)}
+                disabled={gameOver}
+                className="px-8 py-3 text-lg font-semibold transform hover:scale-105 transition-all duration-200 shadow-lg"
               >
-                Play Again
+                No Match
               </Button>
-            </Box>
-          </Box>
-        )}
-      </Paper>
-      
-      <Card sx={{ mb: 5 }}>
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            How to Play:
-          </Typography>
-          <Typography variant="body2" component="div">
-            <ol style={{ textAlign: "left" }}>
-              <li>Remember the shape that appears on the screen.</li>
-              <li>When the next shape appears, click "Match" if it's the same as the previous shape.</li>
-              <li>Click "No Match" if it's different from the previous shape.</li>
-              <li>Get 400 points for each correct answer!</li>
-              <li>You have 45 seconds to get as many points as possible.</li>
-            </ol>
-          </Typography>
-        </CardContent>
-      </Card>
-    </Container>
+            </div>
+            
+            {gameOver && (
+              <Card className="mt-6 bg-gradient-to-r from-purple-100 to-blue-100 border-purple-200">
+                <CardContent className="pt-6">
+                  <h3 className="text-2xl font-bold text-gray-800 mb-4">Game Over! 🎉</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-purple-600">{score}</div>
+                      <div className="text-sm text-gray-600">Final Score</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{totalMatches}</div>
+                      <div className="text-sm text-gray-600">Total Matches</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-green-600">{correctMatches}</div>
+                      <div className="text-sm text-gray-600">Correct</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {totalMatches > 0 ? Math.round((correctMatches / totalMatches) * 100) : 0}%
+                      </div>
+                      <div className="text-sm text-gray-600">Accuracy</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                    <Button 
+                      onClick={handleNavigateToCognitive}
+                      className="bg-purple-600 hover:bg-purple-700 px-6 py-2"
+                    >
+                      Back to Assessment
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      onClick={() => window.location.reload()}
+                      className="border-purple-300 text-purple-700 hover:bg-purple-50 px-6 py-2"
+                    >
+                      Play Again
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-lg text-gray-800">How to Play</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 text-gray-700">
+              <div className="flex items-start gap-3">
+                <Badge className="mt-0.5 bg-purple-100 text-purple-800">1</Badge>
+                <p>Remember the shape that appears on the screen.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Badge className="mt-0.5 bg-purple-100 text-purple-800">2</Badge>
+                <p>When the next shape appears, click "Match" if it's the same as the previous shape.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Badge className="mt-0.5 bg-purple-100 text-purple-800">3</Badge>
+                <p>Click "No Match" if it's different from the previous shape.</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Badge className="mt-0.5 bg-purple-100 text-purple-800">4</Badge>
+                <p>Get 400 points for each correct answer!</p>
+              </div>
+              <div className="flex items-start gap-3">
+                <Badge className="mt-0.5 bg-purple-100 text-purple-800">5</Badge>
+                <p>You have 45 seconds to get as many points as possible.</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 

@@ -1,20 +1,15 @@
 import React, { useState, useEffect } from "react";
-import {
-  Typography,
-  Container,
-  Box,
-  Button,
-  Paper,
-  Grid as MuiGrid,
-  TextField,
-  MenuItem,
-  Divider,
-  LinearProgress,
-  CircularProgress
-} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
 import { submitCognitiveData } from '../services/api';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
+import { Separator } from "@/components/ui/separator";
+import { Loader2 } from "lucide-react";
 
 const CognitiveAssessment = () => {
   const navigate = useNavigate();
@@ -72,7 +67,7 @@ const CognitiveAssessment = () => {
         console.error('Error fetching user data:', error);
         setLoading(false);
         
-        // Handle unauthorized errorsupdatedProblems.forEach(problem
+        // Handle unauthorized errors
         if (error.response && error.response.status === 401) {
           localStorage.removeItem("token");
           navigate('/login');
@@ -123,443 +118,398 @@ const CognitiveAssessment = () => {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  
-  // Check if all games have been played
-  if (!formData.speedMatchPoints || !formData.memoryMatrixPoints || !formData.rainDropsScore) {
-    alert("Please complete all three cognitive games before submitting your assessment.");
-    return;
-  }
-  
-  try {
-    setLoading(true);
+    e.preventDefault();
     
-    // Create consistent data object
-    const backendData = {
-      age: formData.age,
-      sleep_hours: formData.sleep_hours,
-      gender: formData.gender,
-      gameEx: formData.gameEx, // This should match your form field name
-      speed_match_cards: formData.speedMatchCards,
-      speed_match_points: formData.speedMatchPoints,
-      memory_matrix_points: formData.memoryMatrixPoints,
-      time_memory_matrix: formData.timeMemoryMatrix,
-      rain_drops_score: formData.rainDropsScore,
-      time_rain_drops: formData.timeRainDrops
-    };
-    
-    // Add user identifier if available
-    if (user && user.id) {
-      backendData.user_id = user.id;
-    } else if (user && user.email) {
-      backendData.user_email = user.email;
-    }
-    
-    console.log('Form data being submitted:', backendData);
-    
-    // Submit data to backend
-    const result = await submitCognitiveData(backendData);
-    
-    // IMPORTANT FIX: Make sure math score is included in the assessmentResult
-    if (result && !result.p_M && formData.rainDropsScore) {
-      result.p_M = formData.rainDropsScore;
-    }
-    
-    // Store result in localStorage for the results page
-    localStorage.setItem('assessmentResult', JSON.stringify(result));
-    
-    // Update cognitive performance in user profile if possible
-    if (result && result.cognitive_performance && user && user.email) {
-      try {
-        const token = localStorage.getItem('token');
-        await axios.put(
-          "https://research-project-theta.vercel.app/api/auth/updateProfile",
-          { cognitivePerformance: result.cognitive_performance },
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-      } catch (error) {
-        console.error('Error updating cognitive performance in profile:', error);
-      }
-    }
-    
-    setLoading(false);    
-    navigate("/results");    
-    
-  } catch (error) {
-    console.error('Error submitting assessment:', error);
-    setLoading(false);
-    
-    // Show more specific error message
-    let errorMessage = 'There was an error submitting your assessment. Please try again.';
-    if (error.message.includes('Server error')) {
-      errorMessage = 'Server error occurred. Please check your data and try again.';
-    } else if (error.message.includes('No response')) {
-      errorMessage = 'Cannot connect to server. Please check your internet connection.';
-    }
-    
-    alert(errorMessage);
-  }
-};
-
-  const checkAndRefreshToken = async () => {
-    const token = localStorage.getItem("token");
-    
-    if (!token) {
-      navigate("/login");
-      return null;
+    // Check if all games have been played
+    if (!formData.speedMatchPoints || !formData.memoryMatrixPoints || !formData.rainDropsScore) {
+      alert("Please complete all three cognitive games before submitting your assessment.");
+      return;
     }
     
     try {
-      // Try to use the profile endpoint to verify the token
-      await axios.get(
-        "https://research-project-theta.vercel.app/api/auth/profile",
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
+      setLoading(true);
       
-      return token; // Token is valid if we get here
+      // Create consistent data object
+      const backendData = {
+        age: formData.age,
+        sleep_hours: formData.sleep_hours,
+        gender: formData.gender,
+        gameEx: formData.gameEx,
+        speed_match_cards: formData.speedMatchCards,
+        speed_match_points: formData.speedMatchPoints,
+        memory_matrix_points: formData.memoryMatrixPoints,
+        time_memory_matrix: formData.timeMemoryMatrix,
+        rain_drops_score: formData.rainDropsScore,
+        time_rain_drops: formData.timeRainDrops
+      };
+      
+      // Add user identifier if available
+      if (user && user.id) {
+        backendData.user_id = user.id;
+      } else if (user && user.email) {
+        backendData.user_email = user.email;
+      }
+      
+      console.log('Form data being submitted:', backendData);
+      
+      // Submit data to backend
+      const result = await submitCognitiveData(backendData);
+      
+      // IMPORTANT FIX: Make sure math score is included in the assessmentResult
+      if (result && !result.p_M && formData.rainDropsScore) {
+        result.p_M = formData.rainDropsScore;
+      }
+      
+      // Store result in localStorage for the results page
+      localStorage.setItem('assessmentResult', JSON.stringify(result));
+      
+      // Update cognitive performance in user profile if possible
+      if (result && result.cognitive_performance && user && user.email) {
+        try {
+          const token = localStorage.getItem('token');
+          await axios.put(
+            "https://research-project-theta.vercel.app/api/auth/updateProfile",
+            { cognitivePerformance: result.cognitive_performance },
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
+        } catch (error) {
+          console.error('Error updating cognitive performance in profile:', error);
+        }
+      }
+      
+      setLoading(false);    
+      navigate("/results");    
+      
     } catch (error) {
-      // Clear token and redirect to login
-      localStorage.removeItem("token");
-      navigate("/login");
-      return null;
+      console.error('Error submitting assessment:', error);
+      setLoading(false);
+      
+      // Show more specific error message
+      let errorMessage = 'There was an error submitting your assessment. Please try again.';
+      if (error.message.includes('Server error')) {
+        errorMessage = 'Server error occurred. Please check your data and try again.';
+      } else if (error.message.includes('No response')) {
+        errorMessage = 'Cannot connect to server. Please check your internet connection.';
+      }
+      
+      alert(errorMessage);
     }
   };
 
   if (loading && !user) {
     return (
-      <Container maxWidth="md">
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-          <CircularProgress />
-          <Typography variant="h6" sx={{ ml: 2 }}>
-            Loading user data...
-          </Typography>
-        </Box>
-      </Container>
+      <div className="container max-w-4xl mx-auto px-4">
+        <div className="flex justify-center items-center h-[80vh]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2 text-lg">Loading user data...</span>
+        </div>
+      </div>
     );
   }
 
   return (
-    <Container maxWidth="md">
-      <Box sx={{ my: 5, textAlign: "center" }}>
-        <Typography variant="h3" component="h1" gutterBottom>
-          Cognitive Assessment
-        </Typography>
+    <div className="container max-w-4xl mx-auto px-4">
+      <div className="my-10 text-center">
+        <h1 className="text-4xl font-bold mb-4">Cognitive Assessment</h1>
         {user && (
-          <Typography variant="subtitle1" gutterBottom>
+          <p className="text-muted-foreground">
             Logged in as: <strong>{user.email || user.username}</strong>
-          </Typography>
+          </p>
         )}
-      </Box>
+      </div>
       
       {/* Game Completion Progress */}
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h6" gutterBottom>
-          Assessment Progress
-        </Typography>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-          <Box sx={{ textAlign: 'center', width: '30%' }}>
-            <Typography variant="body2">
-              Speed Match
-            </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={formData.speedMatchPoints ? 100 : 0} 
-              sx={{ height: 10, borderRadius: 5 }}
-            />
-          </Box>
-          <Box sx={{ textAlign: 'center', width: '30%' }}>
-            <Typography variant="body2">
-              Memory Matrix
-            </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={formData.memoryMatrixPoints ? 100 : 0} 
-              sx={{ height: 10, borderRadius: 5 }}
-            />
-          </Box>
-          <Box sx={{ textAlign: 'center', width: '30%' }}>
-            <Typography variant="body2">
-              Rain Drops
-            </Typography>
-            <LinearProgress 
-              variant="determinate" 
-              value={formData.rainDropsScore ? 100 : 0} 
-              sx={{ height: 10, borderRadius: 5 }}
-            />
-          </Box>
-        </Box>
-      </Box>
+      <div className="mb-8">
+        <h2 className="text-xl font-semibold mb-4">Assessment Progress</h2>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="text-center">
+            <p className="text-sm mb-2">Speed Match</p>
+            <Progress value={formData.speedMatchPoints ? 100 : 0} className="h-2" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm mb-2">Memory Matrix</p>
+            <Progress value={formData.memoryMatrixPoints ? 100 : 0} className="h-2" />
+          </div>
+          <div className="text-center">
+            <p className="text-sm mb-2">Rain Drops</p>
+            <Progress value={formData.rainDropsScore ? 100 : 0} className="h-2" />
+          </div>
+        </div>
+      </div>
       
       {/* Instructions */}
-      <Box sx={{ mb: 4, p: 3, bgcolor: '#f5f5f5', borderRadius: 2 }}>
-        <Typography variant="h6" gutterBottom>
-          How to Complete Your Assessment
-        </Typography>
-        <Typography variant="body1" component="div">
-          <ol>
-            <li>Fill in your personal information (age, sleep hours, etc.)</li>
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>How to Complete Your Assessment</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ol className="list-decimal list-inside space-y-2">
+            <li>Your age and gender are automatically loaded from your profile</li>
+            <li>Fill in your sleep hours and gaming experience</li>
             <li>Play each of the three cognitive games by clicking the "Play" buttons</li>
             <li>Your game scores will automatically be loaded into the form</li>
             <li>Click "Submit Assessment" to view personalized recommendations</li>
           </ol>
-        </Typography>
-      </Box>
+        </CardContent>
+      </Card>
       
-      <Paper elevation={3} sx={{ p: 4, borderRadius: 2, mb: 5 }}>
-        <form onSubmit={handleSubmit}>
-          <MuiGrid container spacing={3}>
-            {/* Personal Information */}
-            <MuiGrid item xs={12}>
-              <Typography variant="h5" gutterBottom>
-                Personal Information
-              </Typography>
-            </MuiGrid>
-            
-            <MuiGrid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Age"
-                name="age"
-                type="number"
-                value={formData.age}
-                onChange={handleChange}
-                required
-                inputProps={{ min: 1 }}
-              />
-            </MuiGrid>
-            
-            <MuiGrid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                label="Sleep Hours"
-                name="sleep_hours"
-                type="number"
-                value={formData.sleep_hours}
-                onChange={handleChange}
-                required
-                inputProps={{ min: 0, max: 24 }}
-              />
-            </MuiGrid>
-            
-            <MuiGrid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                select
-                label="Gender"
-                name="gender"
-                value={formData.gender}
-                onChange={handleChange}
-                required
-              >
-                <MenuItem value="1">Female</MenuItem>
-                <MenuItem value="0">Male</MenuItem>
-              </TextField>
-            </MuiGrid>
-            
-            <MuiGrid item xs={12} sm={6}>
-              <TextField
-                fullWidth
-                select
-                label="Previous Gaming Experience"
-                name="gameEx"
-                value={formData.gameEx}
-                onChange={handleChange}
-                required
-              >
-                <MenuItem value="1">Yes</MenuItem>
-                <MenuItem value="0">No</MenuItem>
-              </TextField>
-            </MuiGrid>
-            
-            <MuiGrid item xs={12}>
-              <Divider sx={{ my: 1 }} />
-            </MuiGrid>
-            
-            {/* Game section with cards */}
-            <MuiGrid item xs={12}>
-              <Typography variant="h5" gutterBottom>
-                Cognitive Games
-              </Typography>
-            </MuiGrid>
-            
-            {/* Speed Match Game */}
-            <MuiGrid item xs={12} md={4}>
-              <Paper elevation={2} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <Typography variant="h6" gutterBottom>
-                    Speed Match
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Test your processing speed by matching shapes quickly.
-                  </Typography>
+      <Card className="mb-10">
+        <CardHeader>
+          <CardTitle>Assessment Form</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-6">
+              {/* Personal Information */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Personal Information</h3>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="age">Age</Label>
+                    <Input
+                      id="age"
+                      name="age"
+                      type="number"
+                      value={formData.age}
+                      onChange={handleChange}
+                      required
+                      min="1"
+                      readOnly
+                      className="read-only:bg-muted read-only:text-muted-foreground"
+                    />
+                    <p className="text-xs text-muted-foreground">Age is loaded from your profile</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="sleep_hours">Sleep Hours</Label>
+                    <Input
+                      id="sleep_hours"
+                      name="sleep_hours"
+                      type="number"
+                      value={formData.sleep_hours}
+                      onChange={handleChange}
+                      required
+                      min="0"
+                      max="24"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="gender">Gender</Label>
+                    <Select
+                      name="gender"
+                      value={formData.gender}
+                      onValueChange={(value) => setFormData({...formData, gender: value})}
+                      disabled
+                    >
+                      <SelectTrigger className="disabled:bg-muted disabled:text-muted-foreground">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Female</SelectItem>
+                        <SelectItem value="0">Male</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">Gender is loaded from your profile</p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="gameEx">Previous Gaming Experience</Label>
+                    <Select
+                      name="gameEx"
+                      value={formData.gameEx}
+                      onValueChange={(value) => setFormData({...formData, gameEx: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">Yes</SelectItem>
+                        <SelectItem value="0">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-                
-                <Box>
-                  <TextField
-                    fullWidth
-                    label="Cards"
-                    name="speedMatchCards"
-                    type="number"
-                    value={formData.speedMatchCards}
-                    onChange={handleChange}
-                    required
-                    inputProps={{ min: 0 }}
-                    size="small"
-                    margin="normal"
-                    disabled={true}                    
-                  />
-                  <TextField
-                    fullWidth
-                    label="Points"
-                    name="speedMatchPoints"
-                    type="number"
-                    value={formData.speedMatchPoints}
-                    onChange={handleChange}
-                    required
-                    inputProps={{ min: 0 }}
-                    size="small"
-                    margin="normal"
-                    disabled={true}
-                  />
-                  <Button 
-                    variant={formData.speedMatchPoints ? "outlined" : "contained"}
-                    color="primary"
-                    onClick={() => navigate("/speed-match")}
-                    fullWidth
-                    sx={{ mt: 2 }}
-                  >
-                    {formData.speedMatchPoints ? "Play Again" : "Play Game"}
-                  </Button>
-                </Box>
-              </Paper>
-            </MuiGrid>
-            
-            {/* Memory Matrix Game */}
-            <MuiGrid item xs={12} md={4}>
-              <Paper elevation={2} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <Typography variant="h6" gutterBottom>
-                    Memory Matrix
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Test your visual memory by recalling patterns of tiles.
-                  </Typography>
+              </div>
+              
+              <Separator />
+              
+              {/* Game section with cards */}
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Cognitive Games</h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  {/* Speed Match Game */}
+                  <Card className="flex flex-col">
+                    <CardHeader>
+                      <CardTitle>Speed Match</CardTitle>
+                      <CardDescription>
+                        Test your processing speed by matching shapes quickly.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="speedMatchCards">Cards</Label>
+                          <Input
+                            id="speedMatchCards"
+                            name="speedMatchCards"
+                            type="number"
+                            value={formData.speedMatchCards}
+                            onChange={handleChange}
+                            required
+                            min="0"
+                            disabled
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="speedMatchPoints">Points</Label>
+                          <Input
+                            id="speedMatchPoints"
+                            name="speedMatchPoints"
+                            type="number"
+                            value={formData.speedMatchPoints}
+                            onChange={handleChange}
+                            required
+                            min="0"
+                            disabled
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        variant={formData.speedMatchPoints ? "outline" : "default"}
+                        onClick={() => navigate("/speed-match")}
+                        className="w-full mt-4"
+                        type="button"
+                      >
+                        {formData.speedMatchPoints ? "Play Again" : "Play Game"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Memory Matrix Game */}
+                  <Card className="flex flex-col">
+                    <CardHeader>
+                      <CardTitle>Memory Matrix</CardTitle>
+                      <CardDescription>
+                        Test your visual memory by recalling patterns of tiles.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="memoryMatrixPoints">Points</Label>
+                          <Input
+                            id="memoryMatrixPoints"
+                            name="memoryMatrixPoints"
+                            type="number"
+                            value={formData.memoryMatrixPoints}
+                            onChange={handleChange}
+                            required
+                            min="0"
+                            disabled
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="timeMemoryMatrix">Time (minutes)</Label>
+                          <Input
+                            id="timeMemoryMatrix"
+                            name="timeMemoryMatrix"
+                            type="number"
+                            step="0.01"
+                            value={formData.timeMemoryMatrix}
+                            onChange={handleChange}
+                            required
+                            min="0"
+                            disabled
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        variant={formData.memoryMatrixPoints ? "outline" : "default"}
+                        onClick={() => navigate("/memory-matrix")}
+                        className="w-full mt-4"
+                        type="button"
+                      >
+                        {formData.memoryMatrixPoints ? "Play Again" : "Play Game"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                  
+                  {/* Rain Drops Game */}
+                  <Card className="flex flex-col">
+                    <CardHeader>
+                      <CardTitle>Rain Drops</CardTitle>
+                      <CardDescription>
+                        Test your math skills by solving equations in falling raindrops.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col justify-between">
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Label htmlFor="rainDropsScore">Score</Label>
+                          <Input
+                            id="rainDropsScore"
+                            name="rainDropsScore"
+                            type="number"
+                            value={formData.rainDropsScore}
+                            onChange={handleChange}
+                            required
+                            min="0"
+                            disabled
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="timeRainDrops">Time (minutes)</Label>
+                          <Input
+                            id="timeRainDrops"
+                            name="timeRainDrops"
+                            type="number"
+                            step="0.01"
+                            value={formData.timeRainDrops}
+                            onChange={handleChange}
+                            required
+                            min="0"
+                            disabled
+                          />
+                        </div>
+                      </div>
+                      <Button 
+                        variant={formData.rainDropsScore ? "outline" : "default"}
+                        onClick={() => navigate("/rain-drops")}
+                        className="w-full mt-4"
+                        type="button"
+                      >
+                        {formData.rainDropsScore ? "Play Again" : "Play Game"}
+                      </Button>
+                    </CardContent>
+                  </Card>
                 </div>
-                
-                <Box>
-                  <TextField
-                    fullWidth
-                    label="Points"
-                    name="memoryMatrixPoints"
-                    type="number"
-                    value={formData.memoryMatrixPoints}
-                    onChange={handleChange}
-                    required
-                    inputProps={{ min: 0 }}
-                    size="small"
-                    margin="normal"
-                    disabled={true}
-                  />
-                  <TextField
-                    fullWidth
-                    label="Time (minutes)"
-                    name="timeMemoryMatrix"
-                    type="number"
-                    step="0.01"
-                    value={formData.timeMemoryMatrix}
-                    onChange={handleChange}
-                    required
-                    inputProps={{ min: 0, step: 0.01 }}
-                    size="small"
-                    margin="normal"
-                    disabled={true}
-                  />
-                  <Button 
-                    variant={formData.memoryMatrixPoints ? "outlined" : "contained"}
-                    color="primary"
-                    onClick={() => navigate("/memory-matrix")}
-                    fullWidth
-                    sx={{ mt: 2 }}
-                  >
-                    {formData.memoryMatrixPoints ? "Play Again" : "Play Game"}
-                  </Button>
-                </Box>
-              </Paper>
-            </MuiGrid>
-            
-            {/* Rain Drops Game */}
-            <MuiGrid item xs={12} md={4}>
-              <Paper elevation={2} sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                <div>
-                  <Typography variant="h6" gutterBottom>
-                    Rain Drops
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" paragraph>
-                    Test your math skills by solving equations in falling raindrops.
-                  </Typography>
-                </div>
-                
-                <Box>
-                  <TextField
-                    fullWidth
-                    label="Score"
-                    name="rainDropsScore"
-                    type="number"
-                    value={formData.rainDropsScore}
-                    onChange={handleChange}
-                    required
-                    inputProps={{ min: 0 }}
-                    size="small"
-                    margin="normal"
-                    disabled={true} 
-                  />
-                  <TextField
-                    fullWidth
-                    label="Time (minutes)"
-                    name="timeRainDrops"
-                    type="number"
-                    step="0.01"
-                    value={formData.timeRainDrops}
-                    onChange={handleChange}
-                    required
-                    inputProps={{ min: 0, step: 0.01 }}
-                    size="small"
-                    margin="normal"
-                    disabled={true} 
-                  />
-                  <Button 
-                    variant={formData.rainDropsScore ? "outlined" : "contained"}
-                    color="primary"
-                    onClick={() => navigate("/rain-drops")}
-                    fullWidth
-                    sx={{ mt: 2 }}
-                  >
-                    {formData.rainDropsScore ? "Play Again" : "Play Game"}
-                  </Button>
-                </Box>
-              </Paper>
-            </MuiGrid>
-            
-            <MuiGrid item xs={12} sx={{ mt: 5 }}>
-              <Button
-                type="submit"
-                variant="contained"
-                color="primary"
-                fullWidth
-                size="large"
-                disabled={loading || !formData.speedMatchPoints || !formData.memoryMatrixPoints || !formData.rainDropsScore}
-              >
-                {loading ? <CircularProgress size={24} color="inherit" /> : "Submit Assessment"}
-              </Button>
-            </MuiGrid>
-          </MuiGrid>
-        </form>
-      </Paper>
-    </Container>
+              </div>
+              
+              <div className="mt-8">
+                <Button
+                  type="submit"
+                  className="w-full"
+                  size="lg"
+                  disabled={loading || !formData.speedMatchPoints || !formData.memoryMatrixPoints || !formData.rainDropsScore}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    "Submit Assessment"
+                  )}
+                </Button>
+              </div>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 
