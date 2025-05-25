@@ -180,7 +180,7 @@ const CognitiveAssessment = () => {
       }
       
       setLoading(false);    
-      navigate("/results");    
+      navigate("/results");
       
     } catch (error) {
       console.error('Error submitting assessment:', error);

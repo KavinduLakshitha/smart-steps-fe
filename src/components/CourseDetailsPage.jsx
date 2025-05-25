@@ -1,20 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Divider,
-  TextField,
-  Rating,
-} from "@mui/material";
-import CheckCircleIcon from "@mui/icons-material/CheckCircle";
-import DescriptionIcon from "@mui/icons-material/Description";
 import { useNavigate } from "react-router-dom";
 import config from '../config';
 import { useUser } from '../contexts/UserContext';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle, FileText, Clock, Star } from "lucide-react";
 
 const CourseDetailsPage = () => {
   const { id } = useParams(); // Get the course ID from the URL
@@ -31,7 +26,8 @@ const CourseDetailsPage = () => {
   const [timeSpent, setTimeSpent] = useState(0); // Time in seconds
   const [timerActive, setTimerActive] = useState(true);
   const [hasUpdatedMarks, setHasUpdatedMarks] = useState(false); // Track if marks were updated
-const { user, updateUser, isAuthenticated } = useUser();
+  const { user, updateUser, isAuthenticated } = useUser();
+
   // Fetch course details and reviews on component mount
   useEffect(() => {
     const fetchCourse = async () => {
@@ -114,22 +110,29 @@ const { user, updateUser, isAuthenticated } = useUser();
   };
 
   const handleComplete = async () => {
-  try {
-    setIsCompleted(true);
-    
-    // Make sure to update time spent before navigating away
-    if (timerActive) {
-      await updateTimeSpent();
-      setTimerActive(false);
+    try {
+      setIsCompleted(true);
+      
+      // Make sure to update time spent before navigating away
+      if (timerActive) {
+        await updateTimeSpent();
+        setTimerActive(false);
+      }
+      
+      // Store completion status in localStorage for the step progress indicator
+      const completedCourses = JSON.parse(localStorage.getItem('completedCourses') || '[]');
+      if (!completedCourses.includes(id)) {
+        completedCourses.push(id);
+        localStorage.setItem('completedCourses', JSON.stringify(completedCourses));
+      }
+      
+      // Simply navigate back to the filtered courses page
+      navigate('/filtered');
+    } catch (error) {
+      console.error("Error in handleComplete:", error);
+      navigate('/filtered');
     }
-    
-    // Simply navigate back to the filtered courses page
-    navigate('/all');
-  } catch (error) {
-    console.error("Error in handleComplete:", error);
-    navigate('/all');
-  }
-};
+  };
 
   // Helper function to map subject to the corresponding time field
   const getTimeField = (subject) => {
@@ -145,86 +148,86 @@ const { user, updateUser, isAuthenticated } = useUser();
 
   // Handle quiz submission
   const handleQuizSubmit = async () => {
-  try {
-    if (!isAuthenticated) {
-      alert("Please log in to submit the quiz.");
-      return;
-    }
+    try {
+      if (!isAuthenticated) {
+        alert("Please log in to submit the quiz.");
+        return;
+      }
 
-    // Validate quiz answers
-    if (!course.quizAnswers || course.quizQuestions.length !== course.quizAnswers.length) {
-      alert("Quiz answers are not available. Please contact support.");
-      return;
-    }
+      // Validate quiz answers
+      if (!course.quizAnswers || course.quizQuestions.length !== course.quizAnswers.length) {
+        alert("Quiz answers are not available. Please contact support.");
+        return;
+      }
 
-    // More flexible answer checking
-    const results = userAnswers.map((userAnswer, index) => {
-      if (!userAnswer) return false; // No answer provided
+      // More flexible answer checking
+      const results = userAnswers.map((userAnswer, index) => {
+        if (!userAnswer) return false; // No answer provided
+        
+        const correctAnswer = course.quizAnswers[index];
+        
+        // Try different ways of comparing answers
+        // 1. Direct comparison (after trimming whitespace)
+        if (userAnswer.trim() === correctAnswer.trim()) return true;
+        
+        // 2. Case-insensitive comparison
+        if (userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) return true;
+        
+        // 3. For numerical answers, check if the values are close enough
+        // This handles different formats (e.g., "4.0" vs "4")
+        const userNum = parseFloat(userAnswer.replace(/[^\d.-]/g, ''));
+        const correctNum = parseFloat(correctAnswer.replace(/[^\d.-]/g, ''));
+        
+        if (!isNaN(userNum) && !isNaN(correctNum)) {
+          // Allow a small tolerance for floating point comparisons
+          const tolerance = 0.001;
+          if (Math.abs(userNum - correctNum) < tolerance) return true;
+        }
+        
+        // 4. Check for answers with units
+        // Strip all non-alphanumeric except decimal point for number comparison
+        const userNumWithoutUnits = userAnswer.replace(/[^\d.-]/g, '');
+        const correctNumWithoutUnits = correctAnswer.replace(/[^\d.-]/g, '');
+        
+        if (userNumWithoutUnits === correctNumWithoutUnits) return true;
+        
+        // Answer is incorrect
+        return false;
+      });
       
-      const correctAnswer = course.quizAnswers[index];
-      
-      // Try different ways of comparing answers
-      // 1. Direct comparison (after trimming whitespace)
-      if (userAnswer.trim() === correctAnswer.trim()) return true;
-      
-      // 2. Case-insensitive comparison
-      if (userAnswer.trim().toLowerCase() === correctAnswer.trim().toLowerCase()) return true;
-      
-      // 3. For numerical answers, check if the values are close enough
-      // This handles different formats (e.g., "4.0" vs "4")
-      const userNum = parseFloat(userAnswer.replace(/[^\d.-]/g, ''));
-      const correctNum = parseFloat(correctAnswer.replace(/[^\d.-]/g, ''));
-      
-      if (!isNaN(userNum) && !isNaN(correctNum)) {
-        // Allow a small tolerance for floating point comparisons
-        const tolerance = 0.001;
-        if (Math.abs(userNum - correctNum) < tolerance) return true;
+      setCorrectAnswers(results);
+      const score = results.reduce((acc, isCorrect) => acc + (isCorrect ? 20 : 0), 0);
+      setQuizScore(score);
+
+      // Stop the timer
+      setTimerActive(false);
+
+      // Prepare update data
+      const updateData = {
+        [getMarksField(course.subject)]: score,
+        [getTimeField(course.subject)]: timeSpent.toString()
+      };
+
+      // Use updateUser from UserContext
+      const success = await updateUser(updateData);
+
+      if (success) {
+        setQuizSubmitted(true);
+        alert(`Quiz submitted! Score: ${score} | Time: ${formatTime(timeSpent)}`);
+      } else {
+        alert("Failed to update quiz data.");
       }
       
-      // 4. Check for answers with units
-      // Strip all non-alphanumeric except decimal point for number comparison
-      const userNumWithoutUnits = userAnswer.replace(/[^\d.-]/g, '');
-      const correctNumWithoutUnits = correctAnswer.replace(/[^\d.-]/g, '');
+      // Log answers for debugging
+      console.log("User answers:", userAnswers);
+      console.log("Expected answers:", course.quizAnswers);
+      console.log("Results:", results);
       
-      if (userNumWithoutUnits === correctNumWithoutUnits) return true;
-      
-      // Answer is incorrect
-      return false;
-    });
-    
-    setCorrectAnswers(results);
-    const score = results.reduce((acc, isCorrect) => acc + (isCorrect ? 20 : 0), 0);
-    setQuizScore(score);
-
-    // Stop the timer
-    setTimerActive(false);
-
-    // Prepare update data
-    const updateData = {
-      [getMarksField(course.subject)]: score,
-      [getTimeField(course.subject)]: timeSpent.toString()
-    };
-
-    // Use updateUser from UserContext
-    const success = await updateUser(updateData);
-
-    if (success) {
-      setQuizSubmitted(true);
-      alert(`Quiz submitted! Score: ${score} | Time: ${formatTime(timeSpent)}`);
-    } else {
-      alert("Failed to update quiz data.");
+    } catch (error) {
+      console.error("Error submitting quiz:", error);
+      alert("Failed to submit quiz: " + error.message);
     }
-    
-    // Log answers for debugging
-    console.log("User answers:", userAnswers);
-    console.log("Expected answers:", course.quizAnswers);
-    console.log("Results:", results);
-    
-  } catch (error) {
-    console.error("Error submitting quiz:", error);
-    alert("Failed to submit quiz: " + error.message);
-  }
-};
+  };
 
   // Helper function to map subject to the corresponding marks field
   const getMarksField = (subject) => {
@@ -232,7 +235,8 @@ const { user, updateUser, isAuthenticated } = useUser();
   };
 
   // Handle review submission
-  const handleReviewSubmit = async () => {
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
     try {
       if (!isAuthenticated) {
         alert("Please log in to submit a review.");
@@ -265,198 +269,250 @@ const { user, updateUser, isAuthenticated } = useUser();
     }
   };
 
+  // Star rating component
+  const StarRating = ({ value, onChange, readOnly = false }) => {
+    return (
+      <div className="flex space-x-1">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-5 h-5 cursor-pointer transition-colors ${
+              star <= value 
+                ? 'fill-yellow-400 text-yellow-400' 
+                : 'text-gray-300 hover:text-yellow-400'
+            } ${readOnly ? 'cursor-default' : ''}`}
+            onClick={readOnly ? undefined : () => onChange && onChange(star)}
+          />
+        ))}
+      </div>
+    );
+  };
+
   if (!course) {
-    return <Typography>Loading...</Typography>;
+    return (
+      <div className="container mx-auto px-4 py-8 text-center">
+        <div className="flex flex-col items-center justify-center min-h-[50vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <h2 className="text-xl font-semibold mt-4">Loading...</h2>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <Box sx={{ padding: 4, backgroundColor: "#f5f5f5", minHeight: "100vh" }}>
-      <Paper elevation={3} sx={{ padding: 3, marginBottom: 4, marginTop: 4, position: "relative" }}>
-      <Box sx={{ 
-    position: "absolute", 
-    top: -30, 
-    left: "50%", 
-    transform: "translateX(-50%)",
-    backgroundColor: '#f0f0f0',
-    padding: '4px 16px',
-    borderRadius: '4px',
-    boxShadow: 1,
-    zIndex: 1
-  }}>
-    <Typography variant="body1">
-      Time spent: {formatTime(timeSpent)}
-    </Typography>
-  </Box>
-        
-        {/* Complete Button */}
-        <Button
-          variant="contained"
-          color="secondary"
-          onClick={handleComplete}
-          disabled={isCompleted}
-          sx={{ position: "absolute", top: 16, right: 16 }}
-          startIcon={<CheckCircleIcon />}
-        >
-          Complete
-        </Button>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="container mx-auto px-4">
+        <Card className="relative mb-6">
+          {/* Timer Display */}
+          <div className="absolute -top-4 left-1/2 transform -translate-x-1/2 bg-gray-100 px-4 py-1 rounded shadow-sm z-10">
+            <div className="flex items-center space-x-2 text-sm font-medium">
+              <Clock className="w-4 h-4" />
+              <span>Time spent: {formatTime(timeSpent)}</span>
+            </div>
+          </div>
 
-        {/* Course Content Header */}
-        <Box sx={{ display: "flex", alignItems: "center", marginBottom: 2 }}>
-          <DescriptionIcon sx={{ fontSize: 30, color: "primary.main", marginRight: 1 }} />
-          <Typography variant="h4" sx={{ fontWeight: "bold" }}>
-            {course.lessonName}
-          </Typography>
-        </Box>
-
-        {!isAuthenticated && (
-          <Box sx={{ backgroundColor: "#fff3e0", padding: 2, borderRadius: 1, marginBottom: 2 }}>
-            <Typography variant="body1" color="warning.main">
-              Please log in to track your progress and submit quiz answers.
-            </Typography>
-          </Box>
-        )}
-
-        {/* Divider Line */}
-        <Divider sx={{ marginBottom: 2 }} />
-
-        {/* Description Section */}
-        <Box sx={{ display: "flex", alignItems: "center", marginBottom: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: "bold", marginRight: 1 }}>
-            Description:
-          </Typography>
-        </Box>
-        <Typography sx={{ color: "text.secondary", lineHeight: 1.6 }}>
-          {course.description}
-        </Typography>
-      </Paper>
-
-      {/* Display Course Content Based on Learning Material */}
-      {course.learningMaterial === "video" && (
-        <iframe
-          width="100%"
-          height="315"
-          src={`https://www.youtube.com/embed/${course.source.split("/").pop()}`}
-          title="Course Video"
-          frameBorder="0"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
-          style={{ marginBottom: 24, borderRadius: 8 }}
-        />
-      )}
-
-      {course.learningMaterial === "audio" && (
-        <audio controls style={{ width: "100%", marginBottom: 24 }}>
-          <source src={course.source} type="audio/mpeg" />
-          <source src={course.source} type="audio/ogg" />
-          Your browser does not support the audio element.
-        </audio>
-      )}
-
-      {course.learningMaterial === "pdf" && (
-        <iframe src={course.source} width="100%" height="600px" style={{ marginBottom: 24 }} />
-      )}
-
-      {course.learningMaterial === "text" && (
-        <>
-          <Typography variant="h6">Heading:</Typography>
-          <Typography>{course.heading}</Typography>
-          <Typography variant="h6">Content:</Typography>
-          <Typography>{course.textContent}</Typography>
-        </>
-      )}
-
-      {course.learningMaterial === "assignment" && (
-        <Typography variant="h6">Assignment Content: {course.assignmentContent}</Typography>
-      )}
-
-      {course.learningMaterial === "quiz" && course.quizQuestions && (
-        <>
-          <Typography variant="h6">Quiz Questions:</Typography>
-          {course.quizQuestions.map((question, index) => (
-            <Box key={index} sx={{ marginBottom: 2 }}>
-              <Typography>
-                {index + 1}. {question}
-              </Typography>
-              <TextField
-                fullWidth
-                variant="outlined"
-                placeholder="Your answer"
-                value={userAnswers[index] || ""}
-                onChange={(e) => handleQuizAnswerChange(index, e.target.value)}
-                sx={{ marginTop: 1 }}
-                disabled={quizSubmitted}
-              />
-              {correctAnswers.length > 0 && (
-                <Typography
-                  variant="body2"
-                  color={correctAnswers[index] ? "green" : "red"}
-                  sx={{ display: "inline", marginLeft: "8px" }}
-                >
-                  {correctAnswers[index] ? "✓ Correct" : "✗ Incorrect"}
-                </Typography>
-              )}
-            </Box>
-          ))}
-          {!quizSubmitted ? (
-            <Button 
-              variant="contained" 
-              color="primary" 
-              onClick={handleQuizSubmit}
-            >
-              Submit Quiz
-            </Button>
-          ) : (
-            <>
-              <Typography variant="body1" sx={{ color: "green", marginTop: 2 }}>
-                Quiz submitted! Score: {quizScore} | Time: {formatTime(timeSpent)}
-              </Typography>
-              <Button
-                variant="contained"
-                color="secondary"
-                onClick={handleComplete}
-                sx={{ marginTop: 2 }}
-                startIcon={<CheckCircleIcon />}
-              >
-                Complete Course
-              </Button>
-            </>
-          )}
-        </>
-      )}
-
-      <Divider sx={{ margin: "24px 0" }} />
-
-      {/* Reviews Section */}
-      <Box>
-        <Typography variant="h6">User Reviews:</Typography>
-        {reviews.map((review, index) => (
-          <Box key={index} sx={{ marginBottom: 2 }}>
-            <Rating name="read-only" value={review.rating} readOnly />
-            <Typography variant="body2">{review.comment}</Typography>
-          </Box>
-        ))}
-        <Box component="form" sx={{ marginTop: 2 }} onSubmit={handleReviewSubmit}>
-          <Typography variant="h6">Leave a Review:</Typography>
-          <Rating
-            name="simple-controlled"
-            value={rating}
-            onChange={(event, newValue) => setRating(newValue)}
-            sx={{ marginBottom: 1 }}
-          />
-          <TextField
-            fullWidth
-            variant="outlined"
-            label="Your Comment"
-            value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            sx={{ marginBottom: 2 }}
-          />
-          <Button variant="contained" color="primary" type="submit" disabled={!isAuthenticated}>
-            Submit Review
+          {/* Complete Button */}
+          <Button
+            onClick={handleComplete}
+            disabled={isCompleted}
+            className="absolute top-4 right-4"
+            variant={isCompleted ? "secondary" : "default"}
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            {isCompleted ? "Completed" : "Complete"}
           </Button>
-        </Box>
-      </Box>
-    </Box>
+
+          <CardHeader className="pt-8">
+            <CardTitle className="flex items-center space-x-3 text-2xl">
+              <FileText className="w-8 h-8 text-primary" />
+              <span>{course.lessonName}</span>
+            </CardTitle>
+          </CardHeader>
+
+          <CardContent>
+            {!isAuthenticated && (
+              <Alert className="mb-4">
+                <AlertDescription>
+                  Please log in to track your progress and submit quiz answers.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="border-t pt-4">
+              <h3 className="text-lg font-semibold mb-2">Description:</h3>
+              <p className="text-gray-600 leading-relaxed">{course.description}</p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Course Content Based on Learning Material */}
+        <div className="mb-6">
+          {course.learningMaterial === "video" && (
+            <div className="rounded-lg overflow-hidden shadow-lg">
+              <iframe
+                width="100%"
+                height="400"
+                src={`https://www.youtube.com/embed/${course.source.split("/").pop()}`}
+                title="Course Video"
+                frameBorder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="w-full"
+              />
+            </div>
+          )}
+
+          {course.learningMaterial === "audio" && (
+            <Card>
+              <CardContent className="p-6">
+                <audio controls className="w-full">
+                  <source src={course.source} type="audio/mpeg" />
+                  <source src={course.source} type="audio/ogg" />
+                  Your browser does not support the audio element.
+                </audio>
+              </CardContent>
+            </Card>
+          )}
+
+          {course.learningMaterial === "pdf" && (
+            <Card>
+              <CardContent className="p-0">
+                <iframe 
+                  src={course.source} 
+                  width="100%" 
+                  height="600px" 
+                  className="rounded-lg"
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {course.learningMaterial === "text" && (
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-xl font-semibold mb-4">Heading:</h3>
+                <p className="mb-6">{course.heading}</p>
+                <h3 className="text-xl font-semibold mb-4">Content:</h3>
+                <p className="leading-relaxed">{course.textContent}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {course.learningMaterial === "assignment" && (
+            <Card>
+              <CardContent className="p-6">
+                <h3 className="text-xl font-semibold mb-4">Assignment Content:</h3>
+                <p className="leading-relaxed">{course.assignmentContent}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {course.learningMaterial === "quiz" && course.quizQuestions && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Quiz Questions</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  {course.quizQuestions.map((question, index) => (
+                    <div key={index} className="space-y-2">
+                      <p className="font-medium">
+                        {index + 1}. {question}
+                      </p>
+                      <Input
+                        placeholder="Your answer"
+                        value={userAnswers[index] || ""}
+                        onChange={(e) => handleQuizAnswerChange(index, e.target.value)}
+                        disabled={quizSubmitted}
+                        className="w-full"
+                      />
+                      {correctAnswers.length > 0 && (
+                        <span
+                          className={`text-sm font-medium ${
+                            correctAnswers[index] ? "text-green-600" : "text-red-600"
+                          }`}
+                        >
+                          {correctAnswers[index] ? "✓ Correct" : "✗ Incorrect"}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {!quizSubmitted ? (
+                    <Button onClick={handleQuizSubmit} className="w-full">
+                      Submit Quiz
+                    </Button>
+                  ) : (
+                    <div className="space-y-4">
+                      <Alert>
+                        <CheckCircle className="w-4 h-4" />
+                        <AlertDescription>
+                          Quiz submitted! Score: {quizScore} | Time: {formatTime(timeSpent)}
+                        </AlertDescription>
+                      </Alert>
+                      <Button
+                        onClick={handleComplete}
+                        className="w-full"
+                        variant="secondary"
+                      >
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Complete Course
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Reviews Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle>User Reviews</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 mb-6">
+              {reviews.map((review, index) => (
+                <div key={index} className="border-b pb-4 last:border-b-0">
+                  <StarRating value={review.rating} readOnly />
+                  <p className="text-gray-600 mt-2">{review.comment}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="border-t pt-6">
+              <h4 className="text-lg font-semibold mb-4">Leave a Review</h4>
+              <form onSubmit={handleReviewSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">Rating</label>
+                  <StarRating 
+                    value={rating} 
+                    onChange={setRating}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-2">Your Comment</label>
+                  <Textarea
+                    placeholder="Share your thoughts about this course..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={4}
+                  />
+                </div>
+                <Button 
+                  type="submit" 
+                  disabled={!isAuthenticated}
+                  className="w-full"
+                >
+                  Submit Review
+                </Button>
+              </form>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   );
 };
 

@@ -1,307 +1,276 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Separator } from "@/components/ui/separator";
+import config from '../config';
 import axios from "axios";
-import config from "../config";
+import { useUser } from "../contexts/UserContext";
 
-const AllCourse = () => {
-  const [courses, setCourses] = useState([]);
-  const [specializations, setSpecializations] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [quizProgress, setQuizProgress] = useState({
-    completed: 0,
-    total: 10
-  });
+const CognitiveResults = () => {
+  const { user, getUserId } = useUser();
   const navigate = useNavigate();
+  const [mathScore, setMathScore] = useState(0);
+  const [memoryScore, setMemoryScore] = useState(0);
+  const [speedScore, setSpeedScore] = useState(0);
+  const [userId, setUserId] = useState("");
+  const [cognitiveLevel, setCognitiveLevel] = useState("");
+  const [recommendations, setRecommendations] = useState([]);
   
-  // Check if user has completed all quizzes and return completion status
-  const hasCompletedQuizzes = () => {
-    if (!user) return false;
-    
-    // Check if user has marks data for all the lessons
-    const requiredFields = [
-      "numberSequencesMarks",
-      "perimeterMarks",
-      "ratioMarks",
-      "fractionsDecimalsMarks",
-      "indicesMarks",
-      "algebraMarks",
-      "anglesMarks",
-      "volumeCapacityMarks",
-      "areaMarks",
-      "probabilityMarks"
-    ];
-    
-    // Count how many fields have at least one mark recorded
-    let completedCount = 0;
-    requiredFields.forEach(field => {
-      if (user[field] && user[field].length > 0) {
-        completedCount++;
+  // Maximum possible score for normalization
+  const maxScoreValue = config.cognitive.maxScoreValue;
+
+  const ensureScoreInAssessmentResult = () => {
+    try {
+      // Get math score from RainDrops game
+      const rainDropsScore = localStorage.getItem('Rain_drops_score');
+      
+      // Get the assessment result
+      const assessmentResultString = localStorage.getItem('assessmentResult');
+      
+      if (assessmentResultString && rainDropsScore) {
+        // Parse the assessment result
+        const assessmentResult = JSON.parse(assessmentResultString);
+        
+        // Check if p_M is missing or 0
+        if (!assessmentResult.p_M || assessmentResult.p_M === '0') {
+          // Add the math score to the assessment result
+          assessmentResult.p_M = rainDropsScore;
+          
+          // Save the updated assessment result
+          localStorage.setItem('assessmentResult', JSON.stringify(assessmentResult));
+          console.log('Added math score to assessmentResult:', rainDropsScore);
+        }
       }
-    });
-    
-    // Note: We're NOT setting state here, just returning the value!
-    return {
-      isComplete: completedCount === requiredFields.length,
-      completed: completedCount,
-      total: requiredFields.length
-    };
-  };
-
-  // Fetch courses data
-  useEffect(() => {
-    const fetchCourses = async () => {
-      try {
-        const response = await axios.get(
-          config.api.getUrl('MAIN_API', '/api/course')
-        );
-        setCourses(response.data);
-        console.log("Courses fetched:", response.data);
-      } catch (error) {
-        console.error("Error fetching courses:", error);
-      }
-    };
-
-    fetchCourses();
-  }, []);
-
-  useEffect(() => {
-    if (user) {
-      const quizStatus = hasCompletedQuizzes();
-      setQuizProgress({
-        completed: quizStatus.completed,
-        total: quizStatus.total
-      });
+    } catch (error) {
+      console.error('Error ensuring score in assessment result:', error);
     }
-  }, [user]);
-
-  // Fetch user profile if token exists
+  };
+  
   useEffect(() => {
-    const fetchUserProfile = async () => {
-      setLoading(true);
-      const token = localStorage.getItem("token");
-      if (!token) {
-        setIsLoggedIn(false);
-        setLoading(false);
-        console.log("No token found. User is not logged in.");
-        return;
-      }
-
+    setUserId(getUserId());
+    ensureScoreInAssessmentResult();
+    // Get assessment result from localStorage
+    const resultData = localStorage.getItem('assessmentResult');
+    
+    if (resultData) {
       try {
-        // Fetch user profile to verify authentication
-        const profileResponse = await axios.get(
-          config.api.getUrl('MAIN_API', '/api/auth/profile'),
-          {
-            headers: { Authorization: `Bearer ${token}` },
+        const parsedData = JSON.parse(resultData);
+        
+        // Update state with backend data
+        setCognitiveLevel(parsedData.cognitive_performance || "");
+        setMathScore(parseInt(parsedData.p_M) || 0);
+        setMemoryScore(parseInt(parsedData.person_memory) || 0);
+        setSpeedScore(parseInt(parsedData.person_speed) || 0);
+        
+        // Update recommendations from backend - ensure it's an array
+        if (parsedData.prediction) {
+          // Handle if prediction is an array
+          if (Array.isArray(parsedData.prediction)) {
+            setRecommendations(parsedData.prediction);
+          } 
+          // Handle if prediction is a string - convert to array
+          else if (typeof parsedData.prediction === 'string') {
+            setRecommendations([parsedData.prediction]);
           }
-        );
-        setIsLoggedIn(true);
-        setUser(profileResponse.data);
-        console.log("User is logged in:", profileResponse.data);
+          // If it's something else unexpected, set empty array
+          else {
+            setRecommendations([]);
+          }
+        }
       } catch (error) {
-        console.error("Error fetching user profile:", error);
-        setIsLoggedIn(false);
-        setUser(null);
-      } finally {
-        setLoading(false);
+        console.error('Error parsing assessment result:', error);
+        // Ensure we set a default empty array if parsing fails
+        setRecommendations([]);
       }
+    } else {
+      // No result data found, ensure recommendations is an empty array
+      setRecommendations([]);
+    }    
+    
+  }, [getUserId]);  
+
+  useEffect(() => {
+    const clearGameData = () => {
+      console.log("Clearing game data from localStorage after results have been displayed");
+      setTimeout(() => {
+        localStorage.removeItem("speed_match_score");
+        localStorage.removeItem("speed_match_cards");
+        localStorage.removeItem("memory_matrix_score");
+        localStorage.removeItem("memory_matrix_time");
+        localStorage.removeItem("Rain_drops_score");
+        localStorage.removeItem("Rain_Drops_Time");
+        console.log("Game data cleared from localStorage");
+      }, 2000);
     };
-
-    fetchUserProfile();
+    
+    clearGameData();
+    
   }, []);
-
-  // Handle card click
-  const handleCardClick = (id, isSpecialization) => {
-    if (!isLoggedIn) {
-      console.log("User is not logged in. Cannot navigate.");
-      return;
-    }
-    navigate(isSpecialization ? `/specialization/${id}` : `/lesson/${id}`);
+  
+  // Get color classes for progress bar based on score
+  const getProgressColorClass = (score) => {
+    const percentage = (score / maxScoreValue) * 100;
+    if (percentage < 30) return "bg-red-500";
+    if (percentage < 60) return "bg-orange-500";
+    return "bg-green-500";
   };
   
-  // Navigate to lesson prediction page
-  const handleLessonPredictionClick = () => {
-    navigate("/lesson");
+  const handleReturnToAssessment = () => {
+    navigate("/cognitive");
   };
-
-  const filteredQuizzes = courses.filter((course) => {
-    // Check if it's a quiz - need to check for both "quiz" and "Quiz" due to possible inconsistencies
-    return (course.learningMaterial?.toLowerCase() === "quiz" || 
-            course.type?.toLowerCase() === "quiz") && 
-           course.lessonName.toLowerCase().includes(searchQuery.toLowerCase());
-  });
   
-  // Loading state
-  if (loading) {
-    return (
-      <div className="container mx-auto text-center mt-16">
-        <div className="flex justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-        </div>
-        <h2 className="text-lg font-semibold mt-3 text-blue-800">
-          Loading courses...
-        </h2>
-      </div>
-    );
-  }
-
   return (
-    <div className="container mx-auto px-4 py-6 text-center">
-      <h1 className="text-3xl font-bold mb-2 text-blue-800">Smart Steps</h1>
-      <p className="text-blue-600 mb-6 text-sm">
-        Welcome to the best online education platform!
-      </p>
-
-      {/* Banner for quiz completion status */}
-      {isLoggedIn && (
-        <div className={`rounded-lg shadow-md p-4 mb-6 ${
-          quizProgress.completed === quizProgress.total ? "bg-blue-50 border border-blue-200" : "bg-blue-50 border border-blue-200"
-        }`}>
-          <div className="flex flex-col md:flex-row items-center justify-between">
-            <div className="mb-4 md:mb-0">
-              <h2 className="text-lg font-semibold mb-1 text-blue-800">
-                {quizProgress.completed === quizProgress.total 
-                  ? "All quizzes completed! You can now get personalized lesson predictions." 
-                  : `Complete all ${quizProgress.total} quizzes to unlock personalized lesson predictions.`}
-              </h2>
-              <div>
-                <p className="mb-1 text-sm text-blue-700">Progress: {quizProgress.completed} / {quizProgress.total} quizzes</p>
-                <div className="flex items-center">
-                  <div className="w-full bg-blue-100 rounded-full h-2 mr-2">
-                    <Progress 
-                      value={(quizProgress.completed / quizProgress.total) * 100} 
-                      className="h-2 rounded-full" 
-                      indicatorClassName="bg-blue-600"
-                    />
-                  </div>
-                  <span className="text-xs min-w-[40px] text-blue-700">
-                    {Math.round((quizProgress.completed / quizProgress.total) * 100)}%
-                  </span>
-                </div>
+    <div className="max-w-4xl mx-auto px-4 py-8">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">
+          Assessment Results
+        </h1>
+      </div>
+      
+      <Card className="mb-8 shadow-lg border-0">
+        <CardContent className="p-8">
+          <div className="text-center mb-8">
+            <h2 className="text-xl font-semibold text-gray-700 mb-2">
+              ID: {userId}
+            </h2>
+            <p className="text-gray-600 mb-4">
+              Your assessment results have been processed. Based on your performance, we've created personalized recommendations.
+            </p>
+            {cognitiveLevel && (
+              <div className="mt-4">
+                <span className="text-lg font-medium text-blue-600">
+                  Cognitive Level: <strong className="capitalize">{cognitiveLevel}</strong>
+                </span>
+              </div>
+            )}
+          </div>
+          
+          <h3 className="text-2xl font-bold text-gray-900 mb-6 mt-8">
+            Your Performance
+          </h3>
+          
+          {/* Mathematics Progress */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-lg font-semibold text-gray-800">Mathematics</h4>
+              <span className="text-lg font-bold text-gray-700">{mathScore}</span>
+            </div>
+            <div className="relative">
+              <div className="w-full bg-gray-200 rounded-full h-5">
+                <div 
+                  className={`h-5 rounded-full transition-all duration-300 ${getProgressColorClass(mathScore)}`}
+                  style={{ width: `${(mathScore / maxScoreValue) * 100}%` }}
+                />
               </div>
             </div>
-            <Button
-              className="bg-blue-600 hover:bg-blue-700 text-white"
-              onClick={handleLessonPredictionClick}
-              disabled={quizProgress.completed !== quizProgress.total}
-            >
-              {quizProgress.completed === quizProgress.total ? "Get Lesson Prediction" : "Complete All Quizzes First"}
-            </Button>
           </div>
-        </div>
-      )}
-
-      {/* Search Bar */}
-      <div className="mb-6">
-        <Input
-          className="max-w-md mx-auto border-blue-200 focus:border-blue-400"
-          placeholder="Search quizzes..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
-      {/* Display Quizzes Only */}
-      <h2 className="text-xl font-bold mt-6 mb-4 text-blue-800">Quizzes</h2>
+          
+          {/* Memory Progress */}
+          <div className="mb-6">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-lg font-semibold text-gray-800">Memory</h4>
+              <span className="text-lg font-bold text-gray-700">{memoryScore}</span>
+            </div>
+            <div className="relative">
+              <div className="w-full bg-gray-200 rounded-full h-5">
+                <div 
+                  className={`h-5 rounded-full transition-all duration-300 ${getProgressColorClass(memoryScore)}`}
+                  style={{ width: `${(memoryScore / maxScoreValue) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          
+          {/* Speed Progress */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-2">
+              <h4 className="text-lg font-semibold text-gray-800">Processing Speed</h4>
+              <span className="text-lg font-bold text-gray-700">{speedScore}</span>
+            </div>
+            <div className="relative">
+              <div className="w-full bg-gray-200 rounded-full h-5">
+                <div 
+                  className={`h-5 rounded-full transition-all duration-300 ${getProgressColorClass(speedScore)}`}
+                  style={{ width: `${(speedScore / maxScoreValue) * 100}%` }}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <Separator className="my-8" />
+          
+          <h3 className="text-2xl font-bold text-gray-900 mb-6">
+            Recommendations
+          </h3>
+          
+          {recommendations.length > 0 ? (
+            <ul className="space-y-3">
+              {recommendations.map((recommendation, index) => (
+                <li key={index} className="flex items-start">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 mr-3 flex-shrink-0"></div>
+                  <span className="text-gray-700 leading-relaxed">{recommendation}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-gray-500 italic">
+              No specific recommendations available. Try taking the assessment again.
+            </p>
+          )}
+          
+          <div className="mt-8 flex justify-center">
+            <Button 
+              variant="outline"
+              size="lg"
+              onClick={handleReturnToAssessment}
+              className="px-8 py-3"
+            >
+              Return to Assessment
+            </Button>          
+          </div>
+        </CardContent>
+      </Card>
       
-      {filteredQuizzes.length === 0 ? (
-        <div className="p-6 text-center">
-          <p className="text-lg text-blue-600">
-            No quizzes found matching your search criteria.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {filteredQuizzes.map((course) => {
-            // Determine if this quiz has been completed by checking the user's marks
-            let quizFieldName = null;
+      <Card className="shadow-lg border-0">
+        <CardContent className="p-8">
+          <h3 className="text-xl font-bold text-gray-900 mb-6">
+            What These Results Mean:
+          </h3>
+          
+          <div className="space-y-4">
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-1">Mathematics Score:</h4>
+              <p className="text-gray-600 leading-relaxed">
+                Measures your ability to process numerical information and solve math problems quickly. This is relevant for courses involving calculations, statistics, or logical reasoning.
+              </p>
+            </div>
             
-            // Map course lesson name to the corresponding field in user profile
-            switch(course.lessonName.toLowerCase()) {
-              case "number sequences": quizFieldName = "numberSequencesMarks"; break;
-              case "perimeter": quizFieldName = "perimeterMarks"; break;
-              case "ratio": quizFieldName = "ratioMarks"; break;
-              case "fractions/decimals": 
-              case "fractions and decimals":
-                quizFieldName = "fractionsDecimalsMarks"; break;
-              case "indices": quizFieldName = "indicesMarks"; break;
-              case "algebra": quizFieldName = "algebraMarks"; break;
-              case "angles": quizFieldName = "anglesMarks"; break;
-              case "volume and capacity": quizFieldName = "volumeCapacityMarks"; break;
-              case "area": quizFieldName = "areaMarks"; break;
-              case "probability": quizFieldName = "probabilityMarks"; break;
-              default: quizFieldName = null;
-            }
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-1">Memory Score:</h4>
+              <p className="text-gray-600 leading-relaxed">
+                Reflects your ability to remember and recall visual patterns. This skill is important for courses that require memorization of facts, concepts, or procedures.
+              </p>
+            </div>
             
-            // Check if this quiz has been completed by the user
-            const isCompleted = user && quizFieldName && user[quizFieldName] && user[quizFieldName].length > 0;
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-1">Processing Speed:</h4>
+              <p className="text-gray-600 leading-relaxed">
+                Indicates how quickly you can process information and make decisions. This is valuable for fast-paced courses or those requiring real-time problem solving.
+              </p>
+            </div>
             
-            return (
-              <Card
-                key={course._id}
-                className={`overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg ${
-                  isLoggedIn ? "opacity-100 hover:-translate-y-1" : "opacity-70"
-                } ${isCompleted ? "border-blue-400 border" : ""}`}
-                onClick={() => handleCardClick(course._id, false)}
-              >
-                {/* Completed badge */}
-                {isCompleted && (
-                  <Badge 
-                    className="absolute top-2 right-2 bg-blue-600 z-10"
-                  >
-                    Completed
-                  </Badge>
-                )}
-                
-                <div className="h-24 bg-blue-100 relative overflow-hidden">
-                  {course.image ? (
-                    <img 
-                      src={course.image} 
-                      alt={course.lessonName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-blue-600 text-white font-semibold p-2 text-center">
-                      {course.lessonName}
-                    </div>
-                  )}
-                </div>
-                
-                <CardContent className="p-3">
-                  <h3 className="text-base font-semibold mb-1 text-blue-900">
-                    {course.lessonName}
-                  </h3>
-                  <p className="text-xs text-gray-600 line-clamp-2 h-8">
-                    {course.description}
-                  </p>
-                  
-                  <div className="mt-2 flex justify-center">
-                    <Badge 
-                      className={`${
-                        isCompleted 
-                          ? "bg-white text-blue-600 border border-blue-600" 
-                          : "bg-blue-600 hover:bg-blue-700"
-                      }`}
-                    >
-                      {isCompleted ? "Retry Quiz" : "Start Quiz"}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-      )}
+            <div className="pt-2">
+              <p className="text-gray-600 leading-relaxed">
+                Based on these scores, we've curated a personalized set of courses that match your cognitive strengths and learning style. Continue to see your recommended educational content.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };
 
-export default AllCourse;
+export default CognitiveResults;

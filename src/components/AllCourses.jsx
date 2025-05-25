@@ -21,6 +21,13 @@ const AllCourse = () => {
   });
   const navigate = useNavigate();
   
+  // Utility function to truncate text
+  const truncateText = (text, maxLength = 200) => {
+    if (!text) return "";
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength).trim() + "...";
+  };
+  
   // Check if user has completed all quizzes and return completion status
   const hasCompletedQuizzes = () => {
     if (!user) return false;
@@ -223,7 +230,7 @@ const AllCourse = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {filteredQuizzes.map((course) => {
             // Determine if this quiz has been completed by checking the user's marks
             let quizFieldName = null;
@@ -251,7 +258,7 @@ const AllCourse = () => {
             return (
               <Card
                 key={course._id}
-                className={`h-full overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg ${
+                className={`h-full overflow-hidden cursor-pointer transition-all duration-200 hover:shadow-lg relative ${
                   isLoggedIn ? "opacity-100 hover:-translate-y-1" : "opacity-70"
                 } ${isCompleted ? "border-green-400 border-2" : ""}`}
                 onClick={() => handleCardClick(course._id, false)}
@@ -259,13 +266,13 @@ const AllCourse = () => {
                 {/* Completed badge */}
                 {isCompleted && (
                   <Badge 
-                    className="absolute top-2 right-2 bg-green-500 z-10"
+                    className="absolute top-2 right-2 bg-green-500 z-10 text-xs"
                   >
-                    Completed
+                    ✓
                   </Badge>
                 )}
                 
-                <div className="h-32 bg-blue-100 relative overflow-hidden">
+                <div className="h-20 bg-blue-100 relative overflow-hidden">
                   {course.image ? (
                     <img 
                       src={course.image} 
@@ -273,30 +280,30 @@ const AllCourse = () => {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-blue-500 text-white font-semibold">
+                    <div className="w-full h-full flex items-center justify-center bg-blue-500 text-white font-semibold text-sm px-2">
                       {course.lessonName}
                     </div>
                   )}
                 </div>
                 
-                <CardContent className="flex-grow p-4">
-                  <h3 className="text-lg font-semibold mb-2">
+                <CardContent className="flex-grow p-3">
+                  <h3 className="text-sm font-semibold mb-1 leading-tight">
                     {course.lessonName}
                   </h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    {course.description}
+                  <p className="text-gray-600 text-xs mb-2 leading-relaxed">
+                    {truncateText(course.description, 50)}
                   </p>
                 </CardContent>
                 
-                <CardFooter className="flex justify-center p-4 pt-0">
+                <CardFooter className="flex justify-center p-2 pt-0">
                   <Badge 
-                    className={`${
+                    className={`text-xs px-2 py-1 ${
                       isCompleted 
-                        ? "bg-white text-blue-600 border border-blue-600" 
-                        : "bg-blue-600 hover:bg-blue-700"
+                        ? "bg-white text-green-600 border border-green-600 hover:bg-green-50" 
+                        : "bg-blue-600 hover:bg-blue-700 text-white"
                     }`}
                   >
-                    {isCompleted ? "Retry Quiz" : "Start Quiz"}
+                    {isCompleted ? "Retry" : "Start"}
                   </Badge>
                 </CardFooter>
               </Card>

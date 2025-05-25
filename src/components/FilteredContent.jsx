@@ -1,23 +1,10 @@
 import React, { useEffect, useState } from "react";
-import {
-  Typography,
-  Container,
-  Grid,
-  Card,
-  CardContent,
-  CardMedia,
-  CircularProgress,
-  Box,
-  Stepper,
-  Step,
-  StepLabel,
-  StepConnector,
-  Paper,
-} from "@mui/material";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import config from "../config";
 import { useUser } from "../contexts/UserContext";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const FilteredCourses = () => {
   const [courses, setCourses] = useState([]);
@@ -50,8 +37,7 @@ const FilteredCourses = () => {
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
-      // Use UserContext to check authentication instead of localStorage
-      if (userLoading) return; // Wait for user context to load
+      if (userLoading) return;
       
       if (!isAuthenticated) {
         navigate("/login");
@@ -59,7 +45,6 @@ const FilteredCourses = () => {
       }
 
       try {
-        // Use user data from context instead of making a separate API call
         const email = user.email;
         
         const contentPreferenceResponse = await axios.get(
@@ -67,12 +52,11 @@ const FilteredCourses = () => {
         );
         
         const subjectName = contentPreferenceResponse.data.preferences;
-        const cognitive = contentPreferenceResponse.data.cognitive || 'Low'; // Default to Low
+        const cognitive = contentPreferenceResponse.data.cognitive || 'Low';
         
         setSubject(subjectName);
         setCognitivePerformance(cognitive);
 
-        // First, try with the original subject name
         console.log(`Trying to fetch courses for subject: "${subjectName}"`);
         let coursesResponse = await axios.get(
           `https://research-project-theta.vercel.app/api/course/filter/${encodeURIComponent(subjectName)}`
@@ -130,96 +114,222 @@ const FilteredCourses = () => {
     navigate(`/lesson/${id}`);
   };
 
+  // Get material type color
+  const getMaterialTypeColor = (materialType) => {
+    switch (materialType) {
+      case 'quiz':
+        return 'border-l-orange-500';
+      case 'assignment':
+        return 'border-l-green-500';
+      case 'video':
+        return 'border-l-blue-500';
+      case 'audio':
+        return 'border-l-purple-500';
+      case 'pdf':
+        return 'border-l-red-500';
+      default:
+        return 'border-l-slate-500';
+    }
+  };
+
+  // Get material type badge color
+  const getMaterialTypeBadgeColor = (materialType) => {
+    switch (materialType) {
+      case 'quiz':
+        return 'bg-orange-500';
+      case 'assignment':
+        return 'bg-green-500';
+      case 'video':
+        return 'bg-blue-500';
+      case 'audio':
+        return 'bg-purple-500';
+      case 'pdf':
+        return 'bg-red-500';
+      default:
+        return 'bg-slate-500';
+    }
+  };
+
+  // Get unique content types from sorted courses
+  const getUniqueContentTypes = () => {
+    const types = [...new Set(sortedCourses.map(course => course.learningMaterial))];
+    return types.sort();
+  };
+
+  // Get completion data
+  const getCompletionData = () => {
+    const completedCourses = JSON.parse(localStorage.getItem('completedCourses') || '[]');
+    const contentTypes = getUniqueContentTypes();
+    
+    return contentTypes.map(contentType => {
+      const coursesOfType = sortedCourses.filter(course => course.learningMaterial === contentType);
+      const completedOfType = coursesOfType.filter(course => completedCourses.includes(course._id));
+      
+      return {
+        type: contentType,
+        total: coursesOfType.length,
+        completed: completedOfType.length,
+        isFullyCompleted: completedOfType.length === coursesOfType.length && coursesOfType.length > 0
+      };
+    });
+  };
+
+  // Get step icon for content type
+  const getStepIcon = (materialType) => {
+    switch (materialType) {
+      case 'video':
+        return '🎥';
+      case 'audio':
+        return '🎧';
+      case 'quiz':
+        return '❓';
+      case 'assignment':
+        return '📝';
+      case 'pdf':
+        return '📄';
+      default:
+        return '📚';
+    }
+  };
+
+  // Get step color for content type
+  const getStepColor = (materialType, isCompleted = false) => {
+    if (isCompleted) {
+      return 'text-green-600 border-green-500 bg-green-50';
+    }
+    
+    switch (materialType) {
+      case 'quiz':
+        return 'text-orange-600 border-orange-500 bg-orange-50';
+      case 'assignment':
+        return 'text-green-600 border-green-500 bg-green-50';
+      case 'video':
+        return 'text-blue-600 border-blue-500 bg-blue-50';
+      case 'audio':
+        return 'text-purple-600 border-purple-500 bg-purple-50';
+      case 'pdf':
+        return 'text-red-600 border-red-500 bg-red-50';
+      default:
+        return 'text-slate-600 border-slate-500 bg-slate-50';
+    }
+  };
+
   if (loading) {
     return (
-      <Container sx={{ textAlign: "center", mt: 5 }}>
-        <CircularProgress />
-        <Typography variant="h6" sx={{ mt: 2 }}>
-          Loading...
-        </Typography>
-      </Container>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <div className="flex flex-col items-center justify-center min-h-[50vh]">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <h2 className="text-xl font-semibold mt-4">Loading...</h2>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <Container sx={{ textAlign: "center", mt: 5 }}>
-        <Typography variant="h6" color="error">
-          {error}
-        </Typography>
-      </Container>
+      <div className="container mx-auto px-4 py-8">
+        <Alert variant="destructive" className="max-w-md mx-auto">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      </div>
     );
   }
 
   return (
-    <Container sx={{ textAlign: "center", mt: 5, mb: 5 }}>
-      <Typography variant="h3" gutterBottom>
-        Filtered Courses
-      </Typography>
-      <Typography variant="subtitle1" gutterBottom>
-        Showing courses for subject: <strong>{subject}</strong>
-      </Typography>      
+    <div className="container mx-auto px-4 py-8">
+      <div className="text-center mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4">
+          Filtered Courses
+        </h1>
+        <p className="text-lg text-gray-600 mb-6">
+          Showing courses for subject: <strong className="text-gray-900">{subject}</strong>
+        </p>
 
-      {/* Course Cards with Material Type Indicators */}
-      <Grid container spacing={3}>
+        {/* Content Types Progress Steps */}
+        {sortedCourses.length > 0 && (
+          <div className="max-w-4xl mx-auto mb-8">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Learning Progress</h3>
+            <div className="flex flex-wrap justify-center items-center gap-4">
+              {getCompletionData().map((data, index) => (
+                <div key={data.type} className="flex items-center">
+                  <div className={`relative flex items-center justify-center w-12 h-12 rounded-full border-2 ${getStepColor(data.type, data.isFullyCompleted)} font-medium`}>
+                    <span className="text-lg">{getStepIcon(data.type)}</span>
+                    {data.isFullyCompleted && (
+                      <div className="absolute -top-1 -right-1 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs">✓</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="ml-2 text-left">
+                    <div className="text-sm font-medium text-gray-900 capitalize">
+                      {data.type}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      {data.completed}/{data.total} completed
+                    </div>
+                    {data.completed > 0 && (
+                      <div className="w-16 bg-gray-200 rounded-full h-1.5 mt-1">
+                        <div 
+                          className="bg-green-500 h-1.5 rounded-full transition-all duration-300" 
+                          style={{ width: `${(data.completed / data.total) * 100}%` }}
+                        ></div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Connector line (not shown for last item) */}
+                  {index < getCompletionData().length - 1 && (
+                    <div className="hidden sm:block w-8 h-0.5 bg-gray-300 ml-4"></div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Course Cards Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {sortedCourses.length > 0 ? (
           sortedCourses.map((course) => (
-            <Grid item key={course._id} xs={12} sm={6} md={4}>
-              <Card
-                sx={{
-                  height: "100%",
-                  display: "flex",
-                  flexDirection: "column",
-                  cursor: "pointer",
-                  borderLeft: `4px solid ${
-                    course.learningMaterial === 'quiz' ? '#ff5722' :
-                    course.learningMaterial === 'assignment' ? '#4caf50' :
-                    course.learningMaterial === 'video' ? '#2196f3' :
-                    course.learningMaterial === 'audio' ? '#9c27b0' : '#607d8b'
-                  }`
-                }}
-                onClick={() => handleCardClick(course._id)}
-              >
-                <Box sx={{ position: 'relative' }}>
-                  <CardMedia
-                    component="img"
-                    height="140"
-                    image={course.image}
-                    alt={course.lessonName}
-                  />
-                  <Box
-                    sx={{
-                      position: 'absolute',
-                      top: 8,
-                      right: 8,
-                      bgcolor: 'rgba(0,0,0,0.7)',
-                      color: 'white',
-                      px: 1,
-                      borderRadius: 1,
-                      textTransform: 'capitalize'
-                    }}
-                  >
-                    {course.learningMaterial}
-                  </Box>
-                </Box>
-                <CardContent sx={{ flexGrow: 1 }}>
-                  <Typography gutterBottom variant="h6" component="div">
-                    {course.lessonName}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                    {course.description}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
+            <Card
+              key={course._id}
+              className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 border-l-4 ${getMaterialTypeColor(course.learningMaterial)} h-full flex flex-col`}
+              onClick={() => handleCardClick(course._id)}
+            >
+              <div className="relative">
+                <img
+                  src={course.image}
+                  alt={course.lessonName}
+                  className="w-full h-40 object-cover rounded-t-lg"
+                />
+                <div className={`absolute top-2 right-2 ${getMaterialTypeBadgeColor(course.learningMaterial)} text-white px-2 py-1 rounded text-xs font-medium capitalize`}>
+                  {course.learningMaterial}
+                </div>
+              </div>
+              
+              <CardContent className="flex-1 p-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                  {course.lessonName}
+                </h3>
+                <p className="text-sm text-gray-600 line-clamp-3">
+                  {course.description}
+                </p>
+              </CardContent>
+            </Card>
           ))
         ) : (
-          <Typography variant="h6" sx={{ mt: 4, width: '100%' }}>
-            No courses found for this subject.
-          </Typography>
+          <div className="col-span-full text-center py-12">
+            <div className="text-6xl mb-4">📚</div>
+            <h3 className="text-xl font-medium text-gray-900 mb-2">
+              No courses found for this subject
+            </h3>
+            <p className="text-gray-600">
+              Try checking back later or contact support if you believe this is an error.
+            </p>
+          </div>
         )}
-      </Grid>
-    </Container>
+      </div>
+    </div>
   );
 };
 

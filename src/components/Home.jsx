@@ -161,7 +161,7 @@ const Home = () => {
     {
       id: 1,
       title: "Cognitive Assessment",
-      description: "Measure your cognitive abilities and identify your learning strengths.",
+      // description: "Measure your cognitive abilities and identify your learning strengths.",
       image: "https://images.unsplash.com/photo-1565022536102-f7645c84354a?auto=format&fit=crop&q=80&w=500",
       path: "/cognitive",
       status: assessmentStatus.cognitive,
@@ -174,7 +174,7 @@ const Home = () => {
     {
       id: 2,
       title: "Stress Assessment", 
-      description: "Evaluate your current stress levels with our scientifically validated assessment tool.",
+      // description: "Evaluate your current stress levels with our scientifically validated assessment tool.",
       image: "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80&w=500",
       path: "/stress",
       status: assessmentStatus.stress,
@@ -187,7 +187,7 @@ const Home = () => {
     {
       id: 3,
       title: "Content Preference",
-      description: "Tell us about your learning preferences to get personalized recommendations.",
+      // description: "Tell us about your learning preferences to get personalized recommendations.",
       image: "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&q=80&w=500",
       path: "/all",
       status: assessmentStatus.content,
@@ -196,6 +196,19 @@ const Home = () => {
       bgColor: "bg-blue-50",
       textColor: "text-blue-700",
       borderColor: "border-blue-200"
+    },
+    {
+      id: 4,
+      title: "Lesson Prediction",
+      // description: "Get customized lesson recommendations based on your profile.",
+      image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=500",
+      path: "/lesson-prediction",
+      status: assessmentStatus.lesson,
+      icon: Target,
+      color: "from-orange-500 to-orange-600",
+      bgColor: "bg-orange-50",
+      textColor: "text-orange-700",
+      borderColor: "border-orange-200"
     }
   ];
 
@@ -216,7 +229,7 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
       {/* Hero Section */}
-      <div className="container mx-auto px-4 py-12">
+      <div className="w-full px-8 py-12">
         <div className="text-center mb-16">
           <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full mb-6 shadow-lg">
             <Sparkles className="h-10 w-10 text-white" />
@@ -305,6 +318,7 @@ const Home = () => {
                   key={step.id}
                   className={`
                     relative overflow-hidden transition-all duration-300 cursor-pointer group
+                    flex flex-col h-full
                     ${isAccessible ? 'hover:shadow-2xl hover:-translate-y-3 hover:scale-105' : 'opacity-60 cursor-not-allowed'}
                     ${isCurrent ? 'ring-4 ring-blue-400 ring-opacity-50 shadow-xl' : ''}
                     ${isCompleted ? 'ring-2 ring-green-400' : ''}
@@ -346,7 +360,7 @@ const Home = () => {
                     )}
                   </div>
                   
-                  <div className="h-48 overflow-hidden">
+                  <div className="h-48 overflow-hidden flex-shrink-0">
                     <img 
                       src={step.image} 
                       alt={step.title}
@@ -354,7 +368,7 @@ const Home = () => {
                     />
                   </div>
                   
-                  <CardContent className="p-6">
+                  <CardContent className="p-6 flex flex-col flex-grow">
                     <div className="flex items-center mb-4">
                       <StepIcon className="h-6 w-6 mr-3 text-slate-700" />
                       <h3 className="text-xl font-bold text-slate-900">{step.title}</h3>
@@ -364,9 +378,9 @@ const Home = () => {
                       {step.description}
                     </p>
                     
-                    {/* Results Display */}
+                  <div className="min-h-[80px] mb-6"> {/* Fixed minimum height */}
                     {isCompleted && step.status.data && (
-                      <div className={`mb-6 p-4 ${step.bgColor} rounded-lg border ${step.borderColor}`}>
+                      <div className={`p-4 ${step.bgColor} rounded-lg border ${step.borderColor}`}>
                         {step.id === 1 && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-slate-600">Performance Level</span>
@@ -383,28 +397,37 @@ const Home = () => {
                             </Badge>
                           </div>
                         )}
-                        {step.id === 3 && (
+                        {step.id === 3 && assessmentStatus.content.data && assessmentStatus.content.data.preferences && (
                           <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-600">Preference</span>
-                            <Badge variant="secondary" className={step.textColor}>
-                              {step.status.data.preferences}
+                            <span className="text-sm text-slate-600">Content Preference</span>
+                            <Badge variant="secondary" className={`${step.textColor} max-w-[120px] truncate`}> {/* Add max-width and truncate */}
+                              {typeof assessmentStatus.content.data.preferences === 'string' 
+                                ? assessmentStatus.content.data.preferences
+                                : assessmentStatus.content.data.preferences?.lesson || "No recommendation"
+                              }
                             </Badge>
                           </div>
                         )}
-                        {step.id === 4 && step.status.data.preferences && (
+                        {step.id === 4 && assessmentStatus.lesson.data && assessmentStatus.lesson.data.preferences && (
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-slate-600">Top Lesson</span>
-                            <Badge variant="secondary" className={step.textColor}>
-                              {step.status.data.preferences[0]?.lesson || "No recommendation"}
+                            <Badge variant="secondary" className={`${step.textColor} max-w-[120px] truncate`}> {/* Add max-width and truncate */}
+                              {Array.isArray(assessmentStatus.lesson.data.preferences) 
+                                ? assessmentStatus.lesson.data.preferences[0]?.lesson || "No preference"
+                                : typeof assessmentStatus.lesson.data.preferences === 'string' 
+                                  ? assessmentStatus.lesson.data.preferences
+                                  : assessmentStatus.lesson.data.preferences?.lesson || "No preference"
+                              }
                             </Badge>
                           </div>
                         )}
                       </div>
                     )}
+                  </div>
                     
                     <Button
                       variant={isCompleted ? "outline" : "default"}
-                      className="w-full group"
+                      className="w-full group mt-auto"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!isAuthenticated) {

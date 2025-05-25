@@ -90,7 +90,7 @@ const Navbar = () => {
                     className="text-gray-700 hover:text-blue-600 hover:bg-blue-50"
                   >
                     <BookOpen className="h-4 w-4 mr-2" />
-                    Course Materials
+                    Your Plan
                   </Button>
 
                   {/* User Dropdown */}

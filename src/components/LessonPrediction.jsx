@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import {
   AlertCircle,
-  CheckCircleIcon,
+  CheckCircle,
   Loader2,
   BookOpen,
   User,
@@ -154,7 +153,7 @@ const LessonPrediction = () => {
     fetchUserData();
   }, [navigate]);
 
-  // Handle form submission - now just a function to trigger predictions
+  // Handle form submission
   const handleSubmit = async () => {
     setError(null);
     setPrediction(null);
@@ -190,15 +189,16 @@ const LessonPrediction = () => {
 
       for (const field of numericalFields) {
         if (processedData[field] === "" || isNaN(processedData[field])) {
-          processedData[field] = 0; // Default to 0 if empty or invalid
+          processedData[field] = 0;
         } else {
           processedData[field] = parseFloat(processedData[field]);
         }
       }
 
-      // We're using both APIs for predictions
-      // 1. First, use the content preference API (stress + cognitive based)
-      const contentPredictUrl = config.api.getUrl('STRESS_API', '/predict');
+      // 1. Content preference API (stress + cognitive based)
+      const contentPredictUrl = config.api.getUrl('CONTENT_PREFERENCE_API', '/predict');
+      console.log('Content API URL:', contentPredictUrl);
+      
       const contentResponse = await axios.post(contentPredictUrl, {
         stress_level: processedData.stress_level,
         cognitive_performance: processedData.cognitive_performance,
@@ -214,8 +214,10 @@ const LessonPrediction = () => {
         "probability marks": processedData["probability marks"],
       });
       
-      // 2. Then, use the lesson prediction API (all data)
+      // 2. Lesson prediction API (all data)
       const lessonPredictUrl = config.api.getUrl('LESSON_PREDICTION_API', '/predict');
+      console.log('Lesson API URL:', lessonPredictUrl);
+      
       const lessonResponse = await axios.post(lessonPredictUrl, processedData);
       
       // Set the content-based prediction
@@ -243,12 +245,11 @@ const LessonPrediction = () => {
           });
         }
         
-        // Set a flag in localStorage to trigger profile refresh when returning
         localStorage.setItem("lastPrediction", "true");
       }
     } catch (error) {
+      console.error("Prediction error:", error);
       setError("Error making prediction or saving data. Please try again.");
-      console.error(error);
     } finally {
       setLoading(false);
     }
@@ -306,30 +307,30 @@ const LessonPrediction = () => {
               </div>
               
               <div className="p-4">
-                <Table>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell className="font-semibold text-blue-900">Name</TableCell>
-                      <TableCell>{user?.name || "Not available"}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-semibold text-blue-900">Age</TableCell>
-                      <TableCell>{user?.age || "Not available"}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-semibold text-blue-900">Gender</TableCell>
-                      <TableCell>{formData["Male/Female"] || "Not specified"}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-semibold text-blue-900">Preferred Study Method</TableCell>
-                      <TableCell>{formData["Preferred Study Method"] || "Not specified"}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell className="font-semibold text-blue-900">Disliked Lesson</TableCell>
-                      <TableCell>{formData["Disliked lesson"] || "None"}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
+                <table className="w-full border-collapse">
+                  <tbody>
+                    <tr className="border-b border-gray-200">
+                      <td className="font-semibold text-blue-900 py-2 px-3">Name</td>
+                      <td className="py-2 px-3">{user?.name || "Not available"}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200">
+                      <td className="font-semibold text-blue-900 py-2 px-3">Age</td>
+                      <td className="py-2 px-3">{user?.age || "Not available"}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200">
+                      <td className="font-semibold text-blue-900 py-2 px-3">Gender</td>
+                      <td className="py-2 px-3">{formData["Male/Female"] || "Not specified"}</td>
+                    </tr>
+                    <tr className="border-b border-gray-200">
+                      <td className="font-semibold text-blue-900 py-2 px-3">Preferred Study Method</td>
+                      <td className="py-2 px-3">{formData["Preferred Study Method"] || "Not specified"}</td>
+                    </tr>
+                    <tr>
+                      <td className="font-semibold text-blue-900 py-2 px-3">Disliked Lesson</td>
+                      <td className="py-2 px-3">{formData["Disliked lesson"] || "None"}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
             
@@ -340,35 +341,27 @@ const LessonPrediction = () => {
               </div>
               
               <div className="p-4">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-blue-900">Lesson</TableHead>
-                      <TableHead className="text-right text-blue-900">Marks</TableHead>
-                      <TableHead className="text-right text-blue-900">Time (s)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="capitalize">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b-2 border-blue-200">
+                      <th className="text-blue-900 text-left py-2 px-3">Lesson</th>
+                      <th className="text-right text-blue-900 py-2 px-3">Marks</th>
+                      <th className="text-right text-blue-900 py-2 px-3">Time (s)</th>
+                    </tr>
+                  </thead>
+                  <tbody className="capitalize">
                     {[
-                      "number sequences",
-                      "perimeter",
-                      "ratio",
-                      "fractions/decimals",
-                      "indices",
-                      "algebra",
-                      "angles",
-                      "volume and capacity",
-                      "area",
-                      "probability",
+                      "number sequences", "perimeter", "ratio", "fractions/decimals",
+                      "indices", "algebra", "angles", "volume and capacity", "area", "probability"
                     ].map((lesson) => (
-                      <TableRow key={lesson}>
-                        <TableCell>{lesson}</TableCell>
-                        <TableCell className="text-right">{formData[`${lesson} marks`]}</TableCell>
-                        <TableCell className="text-right">{formData[`${lesson} time(s)`]}</TableCell>
-                      </TableRow>
+                      <tr key={lesson} className="border-b border-gray-200">
+                        <td className="py-2 px-3">{lesson}</td>
+                        <td className="text-right py-2 px-3">{formData[`${lesson} marks`]}</td>
+                        <td className="text-right py-2 px-3">{formData[`${lesson} time(s)`]}</td>
+                      </tr>
                     ))}
-                  </TableBody>
-                </Table>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -424,7 +417,7 @@ const LessonPrediction = () => {
                 
                 <div className="p-4">
                   <Alert className="mb-4 bg-green-50 border-green-200">
-                    <CheckCircleIcon className="h-4 w-4 text-green-600" />
+                    <CheckCircle className="h-4 w-4 text-green-600" />
                     <AlertDescription className="text-green-800">
                       Your content and lesson preferences have been successfully determined!
                     </AlertDescription>
@@ -456,28 +449,28 @@ const LessonPrediction = () => {
                           Top 5 Recommended Lessons:
                         </h3>
                         
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-blue-900">Rank</TableHead>
-                              <TableHead className="text-blue-900">Lesson</TableHead>
-                              <TableHead className="text-right text-blue-900">Score</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
+                        <table className="w-full border-collapse">
+                          <thead>
+                            <tr className="border-b-2 border-blue-200">
+                              <th className="text-blue-900 text-left py-2 px-3">Rank</th>
+                              <th className="text-blue-900 text-left py-2 px-3">Lesson</th>
+                              <th className="text-right text-blue-900 py-2 px-3">Score</th>
+                            </tr>
+                          </thead>
+                          <tbody>
                             {prediction.topLessons.map((lesson, index) => (
-                              <TableRow key={index}>
-                                <TableCell className="font-medium">{index + 1}</TableCell>
-                                <TableCell>{lesson.lesson}</TableCell>
-                                <TableCell className="text-right">
+                              <tr key={index} className="border-b border-gray-200">
+                                <td className="font-medium py-2 px-3">{index + 1}</td>
+                                <td className="py-2 px-3">{lesson.lesson}</td>
+                                <td className="text-right py-2 px-3">
                                   {typeof lesson.probability === 'number' 
                                     ? lesson.probability.toFixed(2) 
                                     : lesson.probability}
-                                </TableCell>
-                              </TableRow>
+                                </td>
+                              </tr>
                             ))}
-                          </TableBody>
-                        </Table>
+                          </tbody>
+                        </table>
                       </CardContent>
                     </Card>
                   )}
