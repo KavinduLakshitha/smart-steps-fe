@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from 'axios';
+import config from "@/config";
 import { submitCognitiveData } from '../services/api';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,14 +41,16 @@ const CognitiveAssessment = () => {
           navigate('/login');
           return;
         }
+
+       const apiUrl = config.api.getUrl('MAIN_API', '/api/auth/profile');
+        if (!apiUrl) {
+          console.error("Failed to get MAIN_API URL for profile");
+          return;
+        }
         
-        // Make API call to get user profile data
-        const profileResponse = await axios.get(
-          "https://research-project-theta.vercel.app/api/auth/profile",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const profileResponse = await axios.get(apiUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         
         // Set user data
         setUser(profileResponse.data);
@@ -163,17 +166,22 @@ const CognitiveAssessment = () => {
       // Store result in localStorage for the results page
       localStorage.setItem('assessmentResult', JSON.stringify(result));
       
-      // Update cognitive performance in user profile if possible
       if (result && result.cognitive_performance && user && user.email) {
         try {
           const token = localStorage.getItem('token');
-          await axios.put(
-            "https://research-project-theta.vercel.app/api/auth/updateProfile",
-            { cognitivePerformance: result.cognitive_performance },
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
-          );
+          const updateApiUrl = config.api.getUrl('MAIN_API', '/api/auth/updateProfile');
+          
+          if (updateApiUrl) {
+            await axios.put(
+              updateApiUrl,
+              { cognitivePerformance: result.cognitive_performance },
+              {
+                headers: { Authorization: `Bearer ${token}` },
+              }
+            );
+          } else {
+            console.error("Failed to get MAIN_API URL for profile update");
+          }
         } catch (error) {
           console.error('Error updating cognitive performance in profile:', error);
         }

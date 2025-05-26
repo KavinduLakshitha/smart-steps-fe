@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 import axios from "axios";
+import config from "../config";
 
 // shadcn/ui components
 import { Button } from "@/components/ui/button";
@@ -19,7 +20,6 @@ import {
   Mail, 
   AlertCircle, 
   Loader2,
-  Sparkles,
   ShieldCheck
 } from "lucide-react";
 
@@ -57,9 +57,15 @@ const Login = () => {
     }
     
     try {
-      // Direct axios call instead of apiService
+      // Use config API URL instead of hardcoded URL
+      const loginUrl = config.api.getUrl('MAIN_API', '/api/auth/login');
+      
+      if (!loginUrl) {
+        throw new Error('API endpoint not configured');
+      }
+      
       const response = await axios.post(
-        "https://research-project-theta.vercel.app/api/auth/login",
+        loginUrl,
         { email, password },
         {
           headers: {
@@ -141,8 +147,20 @@ const Login = () => {
         {/* Main card */}
         <Card className="backdrop-blur-xl bg-white/95 border-0 shadow-2xl">
           <CardHeader className="text-center pb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full mb-4 shadow-lg mx-auto">
-              <Sparkles className="w-8 h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 shadow-lg mx-auto p-2">
+              {/* Replace Sparkles with logo image */}
+              <img 
+                src="/logo.png" 
+                alt="Logo" 
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  // Fallback to a placeholder if logo fails to load
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'block';
+                }}
+              />
+              {/* Fallback text if image fails */}
+              <span className="text-white font-bold text-lg hidden">SS</span>
             </div>
             <CardTitle className="text-3xl font-bold text-slate-900 mb-2">
               Welcome Back

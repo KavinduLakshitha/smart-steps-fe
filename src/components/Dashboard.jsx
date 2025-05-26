@@ -27,6 +27,7 @@ import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import SchoolIcon from "@mui/icons-material/School";
 import MoodIcon from "@mui/icons-material/Mood";
 import PsychologyIcon from "@mui/icons-material/Psychology";
+import config from "@/config";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -67,11 +68,14 @@ const Dashboard = () => {
         let contentData = null;
         let contentCompleted = false;
         try {
-          const contentResponse = await axios.get(
-            `https://research-project-theta.vercel.app/api/content?email=${email}`
-          );
-          contentData = contentResponse.data;
-          contentCompleted = true;
+          const contentApiUrl = config.api.getUrl('MAIN_API', `/api/content?email=${email}`);
+          if (contentApiUrl) {
+            const contentResponse = await axios.get(contentApiUrl);
+            contentData = contentResponse.data;
+            contentCompleted = true;
+          } else {
+            console.error("Failed to get MAIN_API URL for content preferences");
+          }
         } catch (err) {
           console.log("Content preference not found");
         }
@@ -80,11 +84,14 @@ const Dashboard = () => {
         let lessonData = null;
         let lessonCompleted = false;
         try {
-          const lessonResponse = await axios.get(
-            `https://research-project-theta.vercel.app/api/lesson?email=${email}`
-          );
-          lessonData = lessonResponse.data;
-          lessonCompleted = lessonData && lessonData.preferences && lessonData.preferences.length > 0;
+          const lessonApiUrl = config.api.getUrl('MAIN_API', `/api/lesson?email=${email}`);
+          if (lessonApiUrl) {
+            const lessonResponse = await axios.get(lessonApiUrl);
+            lessonData = lessonResponse.data;
+            lessonCompleted = lessonData && lessonData.preferences && lessonData.preferences.length > 0;
+          } else {
+            console.error("Failed to get MAIN_API URL for lesson preferences");
+          }
         } catch (err) {
           console.log("Lesson preference not found");
         }
@@ -110,12 +117,15 @@ const Dashboard = () => {
         });
         
         // Get course recommendations based on completed assessments
-        if (contentCompleted) {
+        if (contentCompleted && contentData) {
           try {
-            const coursesResponse = await axios.get(
-              `https://research-project-theta.vercel.app/api/course/filter/${encodeURIComponent(contentData.preferences)}`
-            );
-            setRecommendations(coursesResponse.data || []);
+            const coursesApiUrl = config.api.getUrl('MAIN_API', `/api/course/filter/${encodeURIComponent(contentData.preferences)}`);
+            if (coursesApiUrl) {
+              const coursesResponse = await axios.get(coursesApiUrl);
+              setRecommendations(coursesResponse.data || []);
+            } else {
+              console.error("Failed to get MAIN_API URL for course recommendations");
+            }
           } catch (error) {
             console.error("Error fetching recommended courses:", error);
           }

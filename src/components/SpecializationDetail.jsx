@@ -11,6 +11,7 @@ import {
   CardMedia,
   CircularProgress,
 } from "@mui/material";
+import config from "@/config";
 
 const SpecializationDetailPage = () => {
   const { specializationId } = useParams(); // Retrieve specializationId from URL
@@ -21,9 +22,13 @@ const SpecializationDetailPage = () => {
   useEffect(() => {
     const fetchSpecialization = async () => {
       try {
-        const response = await axios.get(
-          `https://research-project-theta.vercel.app/api/specialize/${specializationId}`
-        );
+        const apiUrl = config.api.getUrl('MAIN_API', `/api/specialize/${specializationId}`);
+        if (!apiUrl) {
+          console.error("Failed to get MAIN_API URL for specialization");
+          return;
+        }
+
+        const response = await axios.get(apiUrl);
         setSpecialization(response.data);
       } catch (error) {
         console.error("Error fetching specialization details:", error);

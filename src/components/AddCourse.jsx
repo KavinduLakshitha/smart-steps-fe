@@ -22,6 +22,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import config from '@/config';
 
 const AddCoursePage = () => {
   const [notification, setNotification] = useState(null);
@@ -64,24 +65,31 @@ const AddCoursePage = () => {
   // Handle form submission
   const onSubmit = async (data) => {
     try {
-      // Combine form data with quiz data
+      // Get the API URL
+      const apiUrl = config.api.getUrl('MAIN_API', '/api/course/add');
+      if (!apiUrl) {
+        console.error("Failed to get MAIN_API URL for adding course");
+        setNotification({
+          type: 'error',
+          message: 'Failed to add course - API configuration error.'
+        });
+        return;
+      }
+
       const payload = {
         ...data,
         quizQuestions: quizInputs.quizQuestions.filter(q => q.trim() !== ''),
         quizAnswers: quizInputs.quizAnswers.filter(a => a.trim() !== '')
       };
 
-      // Send the request
-      const response = await axios.post('https://research-project-theta.vercel.app/api/course/add', payload);
+      const response = await axios.post(apiUrl, payload);
       console.log('Course content added successfully:', response.data);
       
-      // Show success notification
       setNotification({
         type: 'success',
         message: 'Course content added successfully!'
       });
 
-      // Reset the form
       form.reset();
       setQuizInputs({
         quizQuestions: ['', '', '', '', ''],

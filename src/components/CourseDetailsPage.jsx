@@ -29,20 +29,22 @@ const CourseDetailsPage = () => {
   const { user, updateUser, isAuthenticated } = useUser();
 
   // Fetch course details and reviews on component mount
-  useEffect(() => {
+ useEffect(() => {
     const fetchCourse = async () => {
       try {
-        // Fetch course details
-        const courseResponse = await axios.get(
-          `https://research-project-theta.vercel.app/api/course/${id}`
-        );
+        const courseApiUrl = config.api.getUrl('MAIN_API', `/api/course/${id}`);
+        const reviewsApiUrl = config.api.getUrl('MAIN_API', `/api/reviews/course/${id}`);
+        
+        if (!courseApiUrl || !reviewsApiUrl) {
+          console.error("Failed to get MAIN_API URLs");
+          return;
+        }
+
+        const courseResponse = await axios.get(courseApiUrl);
         setCourse(courseResponse.data);
         console.log(courseResponse.data.subject);
 
-        // Fetch reviews for the course
-        const reviewsResponse = await axios.get(
-          `https://research-project-theta.vercel.app/api/reviews/course/${id}`
-        );
+        const reviewsResponse = await axios.get(reviewsApiUrl);
         setReviews(reviewsResponse.data);
       } catch (error) {
         console.error("Error fetching course details:", error);
@@ -244,10 +246,16 @@ const CourseDetailsPage = () => {
       }
 
       const token = localStorage.getItem("token");
+      const reviewApiUrl = config.api.getUrl('MAIN_API', '/api/reviews/create');
+      
+      if (!reviewApiUrl) {
+        console.error("Failed to get MAIN_API URL for reviews");
+        alert("Failed to submit review - API configuration error.");
+        return;
+      }
 
-      // Submit the review
       await axios.post(
-        `https://research-project-theta.vercel.app/api/reviews/create`,
+        reviewApiUrl,
         {
           courseId: id,
           rating,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import { TextField, Button, Container, Typography, Grid, Paper, CircularProgress } from "@mui/material";
+import config from "@/config";
 
 function PeerPrediction() {
   const [formData, setFormData] = useState({
@@ -52,7 +53,15 @@ function PeerPrediction() {
   const fetchUserProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("https://research-project-theta.vercel.app/api/auth/profile", {
+      const profileApiUrl = config.api.getUrl('MAIN_API', '/api/auth/profile');
+      
+      if (!profileApiUrl) {
+        console.error("Failed to get MAIN_API URL for profile");
+        setError("Failed to load user profile - API configuration error.");
+        return;
+      }
+
+      const res = await axios.get(profileApiUrl, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUserEmail(res.data.email);
@@ -143,15 +152,28 @@ function PeerPrediction() {
       });
 
       // Send data to the Flask backend for prediction
-      const response = await axios.post("http://localhost:5002/predict", processedData);
+      const peerPredictionApiUrl = config.api.getUrl('PEER_PREDICTION_API', '/predict');
+      if (!peerPredictionApiUrl) {
+        console.error("Failed to get PEER_PREDICTION_API URL");
+        setError("Peer prediction service is not available - API configuration error.");
+        return;
+      }
+
+      const response = await axios.post(peerPredictionApiUrl, processedData);
       setResult(response.data["Predicted Class"]);
 
       // Save the prediction to the backend
       if (userEmail) {
-        await axios.post("https://research-project-theta.vercel.app/api/peer/save", {
-          email: userEmail,
-          preferences: response.data["Predicted Class"],
-        });
+        const saveApiUrl = config.api.getUrl('MAIN_API', '/api/peer/save');
+        if (saveApiUrl) {
+          await axios.post(saveApiUrl, {
+            email: userEmail,
+            preferences: response.data["Predicted Class"],
+          });
+        } else {
+          console.error("Failed to get MAIN_API URL for saving peer prediction");
+          // Don't show error to user since prediction was successful, just log it
+        }
       }
     } catch (error) {
       setError("Error sending request. Please try again.");

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import config from "../config"; // Import your config
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -14,7 +15,14 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
-        const response = await axios.get("https://research-project-theta.vercel.app/api/auth/users");
+        const apiUrl = config.api.getUrl('MAIN_API', '/api/auth/users');
+        if (!apiUrl) {
+          console.error("Failed to get MAIN_API URL for users");
+          setError("Failed to fetch users - API configuration error.");
+          return;
+        }
+
+        const response = await axios.get(apiUrl);
         setUsers(response.data);
         setError(null);
       } catch (error) {
@@ -29,7 +37,14 @@ const AdminDashboard = () => {
   // Handle user deletion
   const handleDeleteUser = async (userId) => {
     try {
-      await axios.delete(`https://research-project-theta.vercel.app/api/auth/users/${userId}`);
+      const apiUrl = config.api.getUrl('MAIN_API', `/api/auth/users/${userId}`);
+      if (!apiUrl) {
+        console.error("Failed to get MAIN_API URL for user deletion");
+        setError("Failed to delete user - API configuration error.");
+        return;
+      }
+
+      await axios.delete(apiUrl);
       setUsers(users.filter((user) => user._id !== userId)); // Remove the user from the list
       
       // Using a more modern approach instead of alert

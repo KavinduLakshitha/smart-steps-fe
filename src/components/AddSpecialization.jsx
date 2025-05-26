@@ -20,6 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import config from '@/config';
 
 const AddSpecialization = () => {
   const [courses, setCourses] = useState([]);
@@ -42,7 +43,19 @@ const AddSpecialization = () => {
     const fetchCourses = async () => {
       try {
         setIsLoading(true);
-        const response = await axios.get('https://research-project-theta.vercel.app/api/course');
+        
+        const apiUrl = config.api.getUrl('MAIN_API', '/api/course');
+        if (!apiUrl) {
+          console.error("Failed to get MAIN_API URL for courses");
+          setNotification({
+            type: 'error',
+            message: 'Failed to fetch courses - API configuration error.'
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await axios.get(apiUrl);
         setCourses(response.data);
         setIsLoading(false);
       } catch (error) {
@@ -81,6 +94,17 @@ const AddSpecialization = () => {
     try {
       setIsLoading(true);
       
+      const apiUrl = config.api.getUrl('MAIN_API', '/api/specialize/add');
+      if (!apiUrl) {
+        console.error("Failed to get MAIN_API URL for adding specialization");
+        setNotification({
+          type: 'error',
+          message: 'Failed to add specialization - API configuration error.'
+        });
+        setIsLoading(false);
+        return;
+      }
+      
       // Prepare the payload
       const payload = {
         ...data,
@@ -88,7 +112,7 @@ const AddSpecialization = () => {
       };
 
       // Send the request
-      await axios.post('https://research-project-theta.vercel.app/api/specialize/add', payload);
+      await axios.post(apiUrl, payload);
       
       setNotification({
         type: 'success',

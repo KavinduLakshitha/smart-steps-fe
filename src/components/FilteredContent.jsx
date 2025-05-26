@@ -47,9 +47,12 @@ const FilteredCourses = () => {
       try {
         const email = user.email;
         
-        const contentPreferenceResponse = await axios.get(
-          `https://research-project-theta.vercel.app/api/content?email=${email}`
-        );
+        const contentPreferenceApiUrl = config.api.getUrl('MAIN_API', `/api/content?email=${email}`);
+        if (!contentPreferenceApiUrl) {
+          console.error("Failed to get MAIN_API URL for content preferences");
+          setError("Failed to load content preferences - API configuration error.");
+          return;
+        }
         
         const subjectName = contentPreferenceResponse.data.preferences;
         const cognitive = contentPreferenceResponse.data.cognitive || 'Low';
@@ -58,9 +61,12 @@ const FilteredCourses = () => {
         setCognitivePerformance(cognitive);
 
         console.log(`Trying to fetch courses for subject: "${subjectName}"`);
-        let coursesResponse = await axios.get(
-          `https://research-project-theta.vercel.app/api/course/filter/${encodeURIComponent(subjectName)}`
-        );
+        const coursesApiUrl = config.api.getUrl('MAIN_API', `/api/course/filter/${encodeURIComponent(subjectName)}`);
+        if (!coursesApiUrl) {
+          console.error("Failed to get MAIN_API URL for courses");
+          setError("Failed to load courses - API configuration error.");
+          return;
+        }
         
         // If no courses found with original subject name, try the alternative
         if (!coursesResponse.data || coursesResponse.data.length === 0) {
@@ -71,15 +77,18 @@ const FilteredCourses = () => {
           
           console.log(`No courses found for "${subjectName}", trying alternative: "${alternativeSubject}"`);
           
-          // Try the API request with the alternative subject name
-          coursesResponse = await axios.get(
-            `https://research-project-theta.vercel.app/api/course/filter/${encodeURIComponent(alternativeSubject)}`
-          );
-          
-          // If courses were found with the alternative, update the displayed subject
-          if (coursesResponse.data && coursesResponse.data.length > 0) {
-            console.log(`Found ${coursesResponse.data.length} courses with "${alternativeSubject}"`);
-            setSubject(`${subjectName} (${alternativeSubject})`); // Show both for clarity
+          const alternativeCoursesApiUrl = config.api.getUrl('MAIN_API', `/api/course/filter/${encodeURIComponent(alternativeSubject)}`);
+          if (alternativeCoursesApiUrl) {
+            // Try the API request with the alternative subject name
+            coursesResponse = await axios.get(alternativeCoursesApiUrl);
+            
+            // If courses were found with the alternative, update the displayed subject
+            if (coursesResponse.data && coursesResponse.data.length > 0) {
+              console.log(`Found ${coursesResponse.data.length} courses with "${alternativeSubject}"`);
+              setSubject(`${subjectName} (${alternativeSubject})`); // Show both for clarity
+            }
+          } else {
+            console.error("Failed to get MAIN_API URL for alternative course search");
           }
         } else {
           console.log(`Found ${coursesResponse.data.length} courses with "${subjectName}"`);

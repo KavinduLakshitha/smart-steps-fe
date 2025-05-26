@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import axios from "axios";
+import config from "@/config";
 
 const AllCourse = () => {
   const [courses, setCourses] = useState([]);
@@ -66,9 +67,13 @@ const AllCourse = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const response = await axios.get(
-          "https://research-project-theta.vercel.app/api/course"
-        );
+        const apiUrl = config.api.getUrl('MAIN_API', '/api/course');
+        if (!apiUrl) {
+          console.error("Failed to get MAIN_API URL");
+          return;
+        }
+        
+        const response = await axios.get(apiUrl);
         setCourses(response.data);
         console.log("Courses fetched:", response.data);
       } catch (error) {
@@ -102,13 +107,15 @@ const AllCourse = () => {
       }
 
       try {
-        // Fetch user profile to verify authentication
-        const profileResponse = await axios.get(
-          "https://research-project-theta.vercel.app/api/auth/profile",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
+        const apiUrl = config.api.getUrl('MAIN_API', '/api/auth/profile');
+        if (!apiUrl) {
+          console.error("Failed to get MAIN_API URL for profile");
+          return;
+        }
+        
+        const profileResponse = await axios.get(apiUrl, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         setIsLoggedIn(true);
         setUser(profileResponse.data);
         console.log("User is logged in:", profileResponse.data);

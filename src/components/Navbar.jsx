@@ -81,8 +81,20 @@ const Navbar = () => {
               className="flex items-center space-x-2 cursor-pointer group"
               onClick={handleLogoClick}
             >
-              <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg group-hover:from-blue-700 group-hover:to-indigo-700 transition-all duration-200">
-                <Sparkles className="h-5 w-5 text-white" />
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full mb-2 shadow-lg mx-auto p-2">
+                {/* Replace Sparkles with logo image */}
+                <img 
+                  src="/logo.png" 
+                  alt="Logo" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    // Fallback to a placeholder if logo fails to load
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
+                />
+                {/* Fallback text if image fails */}
+                <span className="text-white font-bold text-lg hidden">SS</span>
               </div>
               <div className="flex flex-col">
                 <span className="text-xl font-bold text-gray-900">Smart Steps</span>
