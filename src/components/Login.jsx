@@ -120,7 +120,7 @@ const Login = () => {
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <div className="min-h-screen flex items-center justify-center ">
         <div className="text-center space-y-4">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto" />
           <p className="text-slate-600 font-medium">Loading...</p>
@@ -135,7 +135,7 @@ const Login = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen  flex items-center justify-center p-4 relative overflow-hidden">
       {/* Background decoration */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute top-1/4 right-1/4 w-72 h-72 bg-blue-200/30 rounded-full mix-blend-multiply filter blur-3xl animate-pulse"></div>

@@ -54,6 +54,8 @@ const FilteredCourses = () => {
           return;
         }
         
+        const contentPreferenceResponse = await axios.get(contentPreferenceApiUrl);
+        
         const subjectName = contentPreferenceResponse.data.preferences;
         const cognitive = contentPreferenceResponse.data.cognitive || 'Low';
         
@@ -61,12 +63,15 @@ const FilteredCourses = () => {
         setCognitivePerformance(cognitive);
 
         console.log(`Trying to fetch courses for subject: "${subjectName}"`);
+        
         const coursesApiUrl = config.api.getUrl('MAIN_API', `/api/course/filter/${encodeURIComponent(subjectName)}`);
         if (!coursesApiUrl) {
           console.error("Failed to get MAIN_API URL for courses");
           setError("Failed to load courses - API configuration error.");
           return;
         }
+        
+        let coursesResponse = await axios.get(coursesApiUrl);
         
         // If no courses found with original subject name, try the alternative
         if (!coursesResponse.data || coursesResponse.data.length === 0) {

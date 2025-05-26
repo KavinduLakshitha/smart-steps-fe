@@ -6,7 +6,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User, GraduationCap, Users, BookOpen, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Loader2, 
+  User, 
+  GraduationCap, 
+  Users, 
+  BookOpen, 
+  AlertCircle, 
+  CheckCircle2,
+  BarChart3,
+  BrainCircuit
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import config from "../config";
@@ -36,6 +47,40 @@ const Profile = () => {
   const navigate = useNavigate();
   const [lessonPredictions, setLessonPredictions] = useState([]);
   const [freshLessonPredictions, setFreshLessonPredictions] = useState([]);
+  
+  // Lesson prediction specific states
+  const [lessonFormData, setLessonFormData] = useState({
+    stress_level: "",
+    cognitive_performance: "",
+    // Fields for marks
+    "number sequences marks": 0,
+    "perimeter marks": 0,
+    "ratio marks": 0,
+    "fractions/decimals marks": 0,
+    "indices marks": 0,
+    "algebra marks": 0,
+    "angles marks": 0,
+    "volume and capacity marks": 0,
+    "area marks": 0,
+    "probability marks": 0,
+    // Fields for times
+    "number sequences time(s)": 0,
+    "perimeter time(s)": 0,
+    "ratio time(s)": 0,
+    "fractions/decimals time(s)": 0,
+    "indices time(s)": 0,
+    "algebra time(s)": 0,
+    "angles time(s)": 0,
+    "volume and capacity time(s)": 0,
+    "area time(s)": 0,
+    "probability time(s)": 0,
+    // User profile data
+    "Male/Female": "",
+    "Preferred Study Method": "",
+    "Disliked lesson": ""
+  });
+  const [lessonPredictionResult, setLessonPredictionResult] = useState(null);
+  const [lessonError, setLessonError] = useState(null);
 
   const getDisplayLabel = (dbValue) => {
     const displayMapping = {
@@ -184,55 +229,24 @@ const Profile = () => {
         "Disliked lesson": mapDislikedLesson(profileData.dislikedLesson)
       };
 
-      // ADD DETAILED LOGGING
-      console.log("🔍 Original Profile Data:", {
-        Gender: profileData.Gender,
-        preferredStudyMethod: profileData.preferredStudyMethod,
-        dislikedLesson: profileData.dislikedLesson
-      });
-      
-      console.log("🔍 Mapped Values:", {
-        "Male/Female": mappedData["Male/Female"],
-        "Preferred Study Method": mappedData["Preferred Study Method"],
-        "Disliked lesson": mappedData["Disliked lesson"]
-      });
-      
-      console.log("🔍 Full Mapped Data being sent to Flask:", mappedData);
-      
-      // Check for any undefined/null values
-      Object.keys(mappedData).forEach(key => {
-        if (mappedData[key] === undefined || mappedData[key] === null || mappedData[key] === "") {
-          console.warn(`⚠️ WARNING: ${key} is ${mappedData[key]}`);
-        }
-      });
-
       // Make prediction request to your Flask API
       const response = await axios.post(config.api.getUrl('LESSON_PREDICTION_API', '/predict'), mappedData);
       const data = response.data;
 
-      console.log("🔍 FULL Flask Response:", JSON.stringify(data, null, 2));
-      console.log("🔍 Response Keys:", Object.keys(data));
-      console.log("🔍 Looking for 'Top 5 Predicted Lessons':", data["Top 5 Predicted Lessons"]);
-
       if (data["Top 5 Predicted Lessons"] && Array.isArray(data["Top 5 Predicted Lessons"])) {
-        console.log("✅ Setting lesson predictions:", data["Top 5 Predicted Lessons"]);
         setLessonPredictions(data["Top 5 Predicted Lessons"]);
         setFreshLessonPredictions(data["Top 5 Predicted Lessons"]);
         
         // Save predictions to backend
         if (profileData.email) {
-          console.log("💾 Saving predictions to backend for:", profileData.email);
           await axios.post(config.api.getUrl('MAIN_API', '/api/lesson/save'), {
             email: profileData.email,
             preferences: data["Top 5 Predicted Lessons"],
           });
-          console.log("✅ Predictions saved successfully");
         }
       } else {
-        console.error("❌ No valid predictions array found in response");
-        console.error("❌ Full response structure:", data);
+        console.error("No valid predictions array found in response");
         
-        // Show the actual error from Flask if it exists
         if (data.error) {
           setSnackbarMessage("Flask ML Error: " + data.error);
         } else {
@@ -242,10 +256,8 @@ const Profile = () => {
         setSnackbarOpen(true);
       }
     } catch (error) {
-      console.error("❌ Error making lesson prediction:", error);
-      console.error("❌ Error response:", error.response?.data);
+      console.error("Error making lesson prediction:", error);
       
-      // Show more specific error message
       let errorMessage = "Error making lesson prediction: ";
       if (error.response?.data?.error) {
         errorMessage += error.response.data.error;
@@ -263,105 +275,197 @@ const Profile = () => {
     }
   };
 
-  // Add a refresh function that can be called to reload the data
-  const refreshProfileData = async () => {
+  const handlePeerPrediction = async (profileData) => {
     setLoading(true);
-    
     try {
-      // Fetch latest user data from API
-      const profileData = await fetchUserProfile();
-      if (!profileData) return;
-      
-      setUser(profileData);
-      // Update form data with the latest values
-      setFormData({
-        name: profileData.name,
-        age: profileData.age,
-        phoneNum: profileData.phoneNum,
-        Gender: profileData.Gender,
-        preferredStudyMethod: profileData.preferredStudyMethod,
-        dislikedLesson: profileData.dislikedLesson,
+      const marksFields = [
+        "numberSequencesMarks",
+        "ratioMarks",
+        "perimeterMarks",
+        "fractionsDecimalsMarks",
+        "indicesMarks",
+        "algebraMarks",
+        "anglesMarks",
+        "volumeCapacityMarks",
+        "areaMarks",
+        "probabilityMarks",
+      ];
+
+      const processedData = {};
+      marksFields.forEach((field) => {
+        const marksArray = profileData[field];
+        const lastMark = marksArray && marksArray.length > 0 ? marksArray[marksArray.length - 1] : 0;
+        const mappedField =
+          field === "fractionsDecimalsMarks" ? "fractions/decimals marks" :
+          field === "volumeCapacityMarks" ? "volume and capacity marks" :
+          field.replace(/([A-Z])/g, " $1").toLowerCase();
+        processedData[mappedField] = lastMark;
       });
 
-      // Always get stress level and cognitive performance from API
-      if (profileData.stressLevel) {
-        setStressLevel(profileData.stressLevel);
-      } else {
-        // Set default if not available from API
-        setStressLevel("Medium");
-      }
+      Object.keys(timeFieldMapping).forEach((profileField) => {
+        const flaskField = timeFieldMapping[profileField];
+        const timeValue = profileData[profileField];
+        processedData[flaskField] = parseInt(timeValue) || 0;
+      });
 
-      if (profileData.stressProbability !== undefined) {
-        setStressProbability(profileData.stressProbability);
-      }
+      processedData["Age"] = parseInt(profileData.age) || 0;
+      processedData["Male/Female"] = profileData.Gender;
+      processedData["Preferred Study Method"] = profileData.preferredStudyMethod;
 
-      if (profileData.cognitivePerformance) {
-        setCognitivePerformance(profileData.cognitivePerformance);
-      } else {
-        // Set default if not available from API
-        setCognitivePerformance("Average");
-      }
-
-      const email = profileData.email;
-
-      // Get the latest content preference (which includes the prediction)
+      const mlEndpoint = config.api.getUrl('PEER_PREDICTION_API', '/predict');
+    
+      let predictedClass;
+      let usedFallback = false;
+    
       try {
-        const contentPreferenceResponse = await axios.get(
-          `${config.api.getUrl('MAIN_API', '/api/content')}?email=${email}`
-        );
-        setContentPreference(contentPreferenceResponse.data);
+        const response = await axios.post(mlEndpoint, processedData);
+        predictedClass = response.data["Predicted Class"];
+      } catch (mlError) {
+        console.error("ML service error:", mlError);
+        usedFallback = true;
         
-        // If there's a contentPreference, update the prediction
-        if (contentPreferenceResponse.data && contentPreferenceResponse.data.preferences) {
-          setPrediction(contentPreferenceResponse.data.preferences);
+        if (profileData.email) {
+          try {
+            const fallbackResponse = await axios.get(
+              `${config.api.getUrl('MAIN_API', '/api/peer')}?email=${profileData.email}`
+            );
+            
+            if (fallbackResponse.data && fallbackResponse.data.preferences) {
+              predictedClass = fallbackResponse.data.preferences;
+            } else {
+              throw new Error("No existing prediction available");
+            }
+          } catch (fallbackError) {
+            console.error("Fallback retrieval failed:", fallbackError);
+            throw new Error("Both ML service and fallback failed");
+          }
         }
-      } catch (err) {
-        console.log("Content preference not found");
       }
 
-      // Refresh lesson preferences
-      try {
-        const lessonPreferenceResponse = await axios.get(
-          `${config.api.getUrl('MAIN_API', '/api/lesson')}?email=${email}`
+    if (predictedClass) {
+      setPeerPrediction(predictedClass);
+      
+      if (!usedFallback && profileData.email) {
+        await axios.post(
+          `${config.api.getUrl('MAIN_API', '/api/peer/save')}`, 
+          {
+            email: profileData.email,
+            preferences: predictedClass,
+          }
         );
-        setLessonPreference(lessonPreferenceResponse.data);
-      } catch (err) {
-        console.log("Lesson preference not found");
       }
-
-      // Refresh peer preferences
-      try {
-        const peerPreferenceResponse = await axios.get(
-          `${config.api.getUrl('MAIN_API', '/api/peer')}?email=${email}`
-        );
-        setPeerPreference(peerPreferenceResponse.data);
-      } catch (err) {
-        console.log("Peer preference not found");
-      }
+    } else {
+      throw new Error("Could not determine peer prediction");
+    }
     } catch (error) {
-      console.error("Error refreshing profile data:", error);
-      setSnackbarMessage("Failed to refresh profile data");
+      setSnackbarMessage("Error making peer prediction. Please try again.");
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
+      console.error(error);
     } finally {
       setLoading(false);
     }
   };
 
-  // Check for updates when component mounts or when returning to this page
-  useEffect(() => {
-    const checkForUpdates = async () => {
-      const lastPrediction = localStorage.getItem("lastPrediction");
-      if (lastPrediction) {
-        // If there's a lastPrediction in localStorage, refresh the profile data
-        await refreshProfileData();
-        // Clear the lastPrediction to avoid unnecessary refreshes
-        localStorage.removeItem("lastPrediction");
+  // Lesson Prediction Submit Handler
+  const handleLessonPredictionSubmit = async () => {
+    setLessonError(null);
+    setLessonPredictionResult(null);
+    setLoading(true);
+
+    try {
+      // Validate and convert form data
+      const processedData = { ...lessonFormData };
+      
+      // Convert numerical fields to numbers
+      const numericalFields = [
+        "number sequences marks",
+        "perimeter marks",
+        "ratio marks",
+        "fractions/decimals marks",
+        "indices marks",
+        "algebra marks",
+        "angles marks",
+        "volume and capacity marks",
+        "area marks",
+        "probability marks",
+        "number sequences time(s)",
+        "perimeter time(s)",
+        "ratio time(s)",
+        "fractions/decimals time(s)",
+        "indices time(s)",
+        "algebra time(s)",
+        "angles time(s)",
+        "volume and capacity time(s)",
+        "area time(s)",
+        "probability time(s)",
+      ];
+
+      for (const field of numericalFields) {
+        if (processedData[field] === "" || isNaN(processedData[field])) {
+          processedData[field] = 0;
+        } else {
+          processedData[field] = parseFloat(processedData[field]);
+        }
       }
-    };
-    
-    checkForUpdates();
-  }, []);
+
+      // 1. Content preference API (stress + cognitive based)
+      const contentPredictUrl = config.api.getUrl('CONTENT_PREFERENCE_API', '/predict');
+      
+      const contentResponse = await axios.post(contentPredictUrl, {
+        stress_level: processedData.stress_level,
+        cognitive_performance: processedData.cognitive_performance,
+        "number sequences marks": processedData["number sequences marks"],
+        "perimeter marks": processedData["perimeter marks"],
+        "ratio marks": processedData["ratio marks"],
+        "fractions/decimals marks": processedData["fractions/decimals marks"],
+        "indices marks": processedData["indices marks"],
+        "algebra marks": processedData["algebra marks"],
+        "angles marks": processedData["angles marks"],
+        "volume and capacity marks": processedData["volume and capacity marks"],
+        "area marks": processedData["area marks"],
+        "probability marks": processedData["probability marks"],
+      });
+      
+      // 2. Lesson prediction API (all data)
+      const lessonPredictUrl = config.api.getUrl('LESSON_PREDICTION_API', '/predict');
+      
+      const lessonResponse = await axios.post(lessonPredictUrl, processedData);
+      
+      // Set the content-based prediction
+      const predictedLesson = contentResponse.data.predicted_lesson;
+      setLessonPredictionResult({
+        contentBased: predictedLesson,
+        topLessons: lessonResponse.data["Top 5 Predicted Lessons"] || []
+      });
+
+      // Save predictions if user is available
+      if (user && user.email) {
+        // Save content preference
+        await axios.post(config.api.getUrl('MAIN_API', '/api/content/save'), {
+          email: user.email,
+          preferences: predictedLesson,
+          stressLevel: lessonFormData.stress_level,
+          cognitive: lessonFormData.cognitive_performance,
+        });
+        
+        // Save lesson preferences
+        if (lessonResponse.data["Top 5 Predicted Lessons"]) {
+          await axios.post(config.api.getUrl('MAIN_API', '/api/lesson/save'), {
+            email: user.email,
+            preferences: lessonResponse.data["Top 5 Predicted Lessons"],
+          });
+        }
+        
+        localStorage.setItem("lastPrediction", "true");
+      }
+    } catch (error) {
+      console.error("Prediction error:", error);
+      setLessonError("Error making prediction or saving data. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -379,9 +483,60 @@ const Profile = () => {
           dislikedLesson: profileData.dislikedLesson,
         });
 
+        // Set up lesson form data
+        const stressLevel = localStorage.getItem("stressLevel") || profileData.stressLevel || "Medium";
+        const cogValue = profileData.cognitivePerformance || localStorage.getItem("cognitivePerformance") || "Average";
+        
+        const updatedLessonFormData = { ...lessonFormData };
+        updatedLessonFormData.stress_level = stressLevel;
+        updatedLessonFormData.cognitive_performance = cogValue;
+        updatedLessonFormData["Male/Female"] = profileData.Gender || "";
+        updatedLessonFormData["Preferred Study Method"] = profileData.preferredStudyMethod || "";
+        updatedLessonFormData["Disliked lesson"] = profileData.dislikedLesson || "";
+        
+        // Map marks
+        const marksFields = [
+          { userField: "numberSequencesMarks", formField: "number sequences marks" },
+          { userField: "perimeterMarks", formField: "perimeter marks" },
+          { userField: "ratioMarks", formField: "ratio marks" },
+          { userField: "fractionsDecimalsMarks", formField: "fractions/decimals marks" },
+          { userField: "indicesMarks", formField: "indices marks" },
+          { userField: "algebraMarks", formField: "algebra marks" },
+          { userField: "anglesMarks", formField: "angles marks" },
+          { userField: "volumeCapacityMarks", formField: "volume and capacity marks" },
+          { userField: "areaMarks", formField: "area marks" },
+          { userField: "probabilityMarks", formField: "probability marks" },
+        ];
+
+        marksFields.forEach(({ userField, formField }) => {
+          const marksArray = profileData[userField] || [];
+          const lastMark = marksArray.length > 0 ? marksArray[marksArray.length - 1] : 0;
+          updatedLessonFormData[formField] = lastMark;
+        });
+        
+        // Map time fields
+        const timeFieldMapping = {
+          "numberSequencesTime": "number sequences time(s)",
+          "perimeterTime": "perimeter time(s)",
+          "ratioTime": "ratio time(s)",
+          "fractionsDecimalsTime": "fractions/decimals time(s)",
+          "indicesTime": "indices time(s)",
+          "algebraTime": "algebra time(s)",
+          "anglesTime": "angles time(s)",
+          "volumeCapacityTime": "volume and capacity time(s)",
+          "areaTime": "area time(s)",
+          "probabilityTime": "probability time(s)",
+        };
+        
+        Object.entries(timeFieldMapping).forEach(([userField, formField]) => {
+          updatedLessonFormData[formField] = parseInt(profileData[userField]) || 0;
+        });
+        
+        setLessonFormData(updatedLessonFormData);
+
         // Always get cognitive performance from API, set default if not available
-        const cogValue = profileData.cognitivePerformance || "Average";
-        setCognitivePerformance(cogValue);
+        const cogValueForProfile = profileData.cognitivePerformance || "Average";
+        setCognitivePerformance(cogValueForProfile);
 
         // Always get stress data from API, set defaults if not available
         const dbStressLevel = profileData.stressLevel || "Medium";
@@ -392,12 +547,6 @@ const Profile = () => {
         if (dbStressProbability !== undefined && dbStressProbability !== null) {
           setStressProbability(dbStressProbability);
         }
-
-        console.log("Stress data loaded from API:", {
-          stressLevel: dbStressLevel,
-          stressProbability: dbStressProbability,
-          cognitivePerformance: cogValue
-        });
 
         const email = profileData.email;
 
@@ -449,7 +598,6 @@ const Profile = () => {
 
     fetchData();
   }, [navigate]);
-  
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -487,162 +635,6 @@ const Profile = () => {
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
     }
-  };  
-
-  const handleStressLevelChange = async (selectedStressLevel) => {
-    setStressLevel(selectedStressLevel);
-    
-    setLoading(true);
-
-    try {
-      // Update stress level in API first
-      await updateUserPerformanceData({ stressLevel: selectedStressLevel });
-
-      // Fetch fresh profile data from API for predictions
-      const profileData = await fetchUserProfile();
-      if (!profileData) return;
-
-      const marksFields = [
-        "numberSequencesMarks",
-        "perimeterMarks",
-        "ratioMarks",
-        "fractionsDecimalsMarks",
-        "indicesMarks",
-        "algebraMarks",
-        "anglesMarks",
-        "volumeCapacityMarks",
-        "areaMarks",
-        "probabilityMarks",
-      ];
-
-      const processedData = {};
-      marksFields.forEach((field) => {
-        const marksArray = profileData[field];
-        const lastMark = marksArray && marksArray.length > 0 ? marksArray[marksArray.length - 1] : 0;
-        processedData[field.replace(/([A-Z])/g, " $1").toLowerCase()] = lastMark;
-      });
-
-      processedData.stress_level = selectedStressLevel;
-      processedData.cognitive_performance = cognitivePerformance;
-
-      const response = await axios.post(config.api.getUrl('STRESS_API', '/predict'), processedData);
-      const predictedLesson = response.data.predicted_lesson;
-      setPrediction(predictedLesson);
-
-      if (profileData?.email) {
-        await axios.post(config.api.getUrl('MAIN_API', '/api/content/save'), {
-          email: profileData.email,
-          preferences: predictedLesson,
-          stressLevel: selectedStressLevel,
-          cognitive: cognitivePerformance,
-        });
-      }
-
-      setSnackbarMessage("Stress level updated and predictions refreshed!");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
-    } catch (error) {
-      setSnackbarMessage("Error updating stress level or making prediction. Please try again.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handlePeerPrediction = async (profileData) => {
-    setLoading(true);
-    try {
-      const marksFields = [
-        "numberSequencesMarks",
-        "ratioMarks",
-        "perimeterMarks",
-        "fractionsDecimalsMarks",
-        "indicesMarks",
-        "algebraMarks",
-        "anglesMarks",
-        "volumeCapacityMarks",
-        "areaMarks",
-        "probabilityMarks",
-      ];
-
-      const processedData = {};
-      marksFields.forEach((field) => {
-        const marksArray = profileData[field];
-        const lastMark = marksArray && marksArray.length > 0 ? marksArray[marksArray.length - 1] : 0;
-        const mappedField =
-          field === "fractionsDecimalsMarks" ? "fractions/decimals marks" :
-          field === "volumeCapacityMarks" ? "volume and capacity marks" :
-          field.replace(/([A-Z])/g, " $1").toLowerCase();
-        processedData[mappedField] = lastMark;
-      });
-
-      Object.keys(timeFieldMapping).forEach((profileField) => {
-        const flaskField = timeFieldMapping[profileField];
-        const timeValue = profileData[profileField];
-        processedData[flaskField] = parseInt(timeValue) || 0;
-      });
-
-      processedData["Age"] = parseInt(profileData.age) || 0;
-      processedData["Male/Female"] = profileData.Gender;
-      processedData["Preferred Study Method"] = profileData.preferredStudyMethod;
-
-      const mlEndpoint = config.api.getUrl('PEER_PREDICTION_API', '/predict');
-      console.log("Using ML endpoint:", mlEndpoint);
-    
-      let predictedClass;
-      let usedFallback = false;
-    
-      try {
-        const response = await axios.post(mlEndpoint, processedData);
-        predictedClass = response.data["Predicted Class"];
-      } catch (mlError) {
-        console.error("ML service error:", mlError);
-        usedFallback = true;
-        
-        if (profileData.email) {
-          try {
-            const fallbackResponse = await axios.get(
-              `${config.api.getUrl('MAIN_API', '/api/peer')}?email=${profileData.email}`
-            );
-            
-            if (fallbackResponse.data && fallbackResponse.data.preferences) {
-              predictedClass = fallbackResponse.data.preferences;
-              console.log("Using fallback prediction:", predictedClass);
-            } else {
-              throw new Error("No existing prediction available");
-            }
-          } catch (fallbackError) {
-            console.error("Fallback retrieval failed:", fallbackError);
-            throw new Error("Both ML service and fallback failed");
-          }
-        }
-      }
-
-    if (predictedClass) {
-      setPeerPrediction(predictedClass);
-      
-      if (!usedFallback && profileData.email) {
-        await axios.post(
-          `${config.api.getUrl('MAIN_API', '/api/peer/save')}`, 
-          {
-            email: profileData.email,
-            preferences: predictedClass,
-          }
-        );
-      }
-    } else {
-      throw new Error("Could not determine peer prediction");
-    }
-    } catch (error) {
-      setSnackbarMessage("Error making peer prediction. Please try again.");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-      console.error(error);
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleSnackbarClose = () => {
@@ -666,8 +658,7 @@ const Profile = () => {
     "triangle theory",
     "triangles",
     "volume and capacity",
-  ];  
-  const cognitivePerformanceOptions = ["Beginner", "Intermediate", "Great", "Expert"];
+  ];
 
   // Display logic - prioritize fresh predictions over database ones
   const displayLessonPreferences = freshLessonPredictions.length > 0 
@@ -679,14 +670,8 @@ const Profile = () => {
             .map((pref, index) => ({ ...pref, rank: index + 1 }))
         : []);
 
-  // Debug logging
-  console.log("🔍 DISPLAY DEBUG:");
-  console.log("  - freshLessonPredictions:", freshLessonPredictions);
-  console.log("  - lessonPreference:", lessonPreference);
-  console.log("  - displayLessonPreferences:", displayLessonPreferences);
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 p-4">
+    <div className="min-h-screen p-4">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
@@ -704,274 +689,499 @@ const Profile = () => {
           </Alert>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* Left Side: Profile Form */}
-          <div className="space-y-6">
-            <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Update Profile
-                </CardTitle>
-                <CardDescription className="text-blue-100">
-                  Update your personal information and preferences
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-6">
-                {user ? (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name" className="text-blue-900 font-medium">Name</Label>
-                      <Input
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleChange}
-                        required
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
+        {/* Tabs */}
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Profile Management
+            </TabsTrigger>
+            <TabsTrigger value="prediction" className="flex items-center gap-2">
+              <BrainCircuit className="h-4 w-4" />
+              Lesson Prediction
+            </TabsTrigger>
+          </TabsList>
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="age" className="text-blue-900 font-medium">Age</Label>
-                        <Input
-                          id="age"
-                          name="age"
-                          value={formData.age}
-                          onChange={handleChange}
-                          required
-                          className="border-blue-200 focus:border-blue-400"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="gender" className="text-blue-900 font-medium">Gender</Label>
-                        <Select value={formData.Gender} onValueChange={(value) => handleSelectChange('Gender', value)}>
-                          <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                            <SelectValue placeholder="Select gender" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {genderOptions.map((option) => (
-                              <SelectItem key={option} value={option}>{option}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+          {/* Profile Tab */}
+          <TabsContent value="profile">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Left Side: Profile Form */}
+              <div className="space-y-6">
+                <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+                    <CardTitle className="flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      Update Profile
+                    </CardTitle>
+                    <CardDescription className="text-blue-100">
+                      Update your personal information and preferences
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    {user ? (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name" className="text-blue-900 font-medium">Name</Label>
+                          <Input
+                            id="name"
+                            name="name"
+                            value={formData.name}
+                            onChange={handleChange}
+                            required
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="phone" className="text-blue-900 font-medium">Phone Number</Label>
-                      <Input
-                        id="phone"
-                        name="phoneNum"
-                        value={formData.phoneNum}
-                        onChange={handleChange}
-                        required
-                        className="border-blue-200 focus:border-blue-400"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="studyMethod" className="text-blue-900 font-medium">Preferred Study Method</Label>
-                      <Select value={formData.preferredStudyMethod} onValueChange={(value) => handleSelectChange('preferredStudyMethod', value)}>
-                        <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                          <SelectValue placeholder="Select study method" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {studyMethodOptions.map((option) => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="dislikedLesson" className="text-blue-900 font-medium">Disliked Lesson</Label>
-                      <Select value={formData.dislikedLesson} onValueChange={(value) => handleSelectChange('dislikedLesson', value)}>
-                        <SelectTrigger className="border-blue-200 focus:border-blue-400">
-                          <SelectValue placeholder="Select disliked lesson" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dislikedLessonOptions.map((option) => (
-                            <SelectItem key={option} value={option}>{option}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="flex flex-wrap gap-3 pt-4">
-                      <Button 
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="bg-blue-600 hover:bg-blue-700 text-white"
-                      >
-                        {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                        Update Profile
-                      </Button>
-                      <Button 
-                        type="button"
-                        variant="outline"
-                        onClick={() => navigate("/lesson")}
-                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                      >
-                        Lesson Prediction
-                      </Button>
-                      <Button 
-                        type="button"
-                        variant="outline"
-                        onClick={() => navigate("/")}
-                        className="border-blue-300 text-blue-700 hover:bg-blue-50"
-                      >
-                        Back to Home
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Lesson Predictions - Left Side */}
-            {displayLessonPreferences.length > 0 && (
-              <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <BookOpen className="h-5 w-5" />
-                    Lesson Preferences (Top 5)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="overflow-x-auto">
-                    <div className="min-w-full">
-                      <div className="grid grid-cols-3 gap-4 p-3 bg-blue-50 rounded-t-lg border-b border-blue-200">
-                        <div className="font-semibold text-blue-900">Rank</div>
-                        <div className="font-semibold text-blue-900">Lesson</div>
-                        <div className="font-semibold text-blue-900">Probability</div>
-                      </div>
-                      <div className="space-y-2">
-                        {displayLessonPreferences.map((pref, index) => (
-                          <div key={index} className="grid grid-cols-3 gap-4 p-3 border-b border-blue-100 hover:bg-blue-50/50 transition-colors">
-                            <div>
-                              <Badge variant="outline" className="border-blue-300 text-blue-700">
-                                #{pref.rank}
-                              </Badge>
-                            </div>
-                            <div className="font-medium text-blue-900">{pref.lesson}</div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <div className="w-16 bg-blue-100 rounded-full h-2">
-                                  <div 
-                                    className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
-                                    style={{ width: `${(typeof pref.probability === 'number' ? pref.probability * 100 : parseFloat(pref.probability) || 0)}%` }}
-                                  ></div>
-                                </div>
-                                <span className="text-sm text-blue-700">
-                                  {typeof pref.probability === 'number' 
-                                    ? (pref.probability * 100).toFixed(1) + '%'
-                                    : pref.probability}
-                                </span>
-                              </div>
-                            </div>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="age" className="text-blue-900 font-medium">Age</Label>
+                            <Input
+                              id="age"
+                              name="age"
+                              value={formData.age}
+                              onChange={handleChange}
+                              required
+                              className="border-blue-200 focus:border-blue-400"
+                            />
                           </div>
-                        ))}
+                          <div className="space-y-2">
+                            <Label htmlFor="gender" className="text-blue-900 font-medium">Gender</Label>
+                            <Select value={formData.Gender} onValueChange={(value) => handleSelectChange('Gender', value)}>
+                              <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                                <SelectValue placeholder="Select gender" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {genderOptions.map((option) => (
+                                  <SelectItem key={option} value={option}>{option}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="phone" className="text-blue-900 font-medium">Phone Number</Label>
+                          <Input
+                            id="phone"
+                            name="phoneNum"
+                            value={formData.phoneNum}
+                            onChange={handleChange}
+                            required
+                            className="border-blue-200 focus:border-blue-400"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="studyMethod" className="text-blue-900 font-medium">Preferred Study Method</Label>
+                          <Select value={formData.preferredStudyMethod} onValueChange={(value) => handleSelectChange('preferredStudyMethod', value)}>
+                            <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                              <SelectValue placeholder="Select study method" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {studyMethodOptions.map((option) => (
+                                <SelectItem key={option} value={option}>{option}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="dislikedLesson" className="text-blue-900 font-medium">Disliked Lesson</Label>
+                          <Select value={formData.dislikedLesson} onValueChange={(value) => handleSelectChange('dislikedLesson', value)}>
+                            <SelectTrigger className="border-blue-200 focus:border-blue-400">
+                              <SelectValue placeholder="Select disliked lesson" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {dislikedLessonOptions.map((option) => (
+                                <SelectItem key={option} value={option}>{option}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3 pt-4">
+                          <Button 
+                            onClick={handleSubmit}
+                            disabled={loading}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                          >
+                            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Update Profile
+                          </Button>
+                          <Button 
+                            type="button"
+                            variant="outline"
+                            onClick={() => navigate("/")}
+                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                          >
+                            Back to Home
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Lesson Predictions - Left Side */}
+                {displayLessonPreferences.length > 0 && (
+                  <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
+                    <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
+                      <CardTitle className="flex items-center gap-2">
+                        <BookOpen className="h-5 w-5" />
+                        Lesson Preferences (Top 5)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="overflow-x-auto">
+                        <div className="min-w-full">
+                          <div className="grid grid-cols-3 gap-4 p-3 bg-blue-50 rounded-t-lg border-b border-blue-200">
+                            <div className="font-semibold text-blue-900">Rank</div>
+                            <div className="font-semibold text-blue-900">Lesson</div>
+                            <div className="font-semibold text-blue-900">Probability</div>
+                          </div>
+                          <div className="space-y-2">
+                            {displayLessonPreferences.map((pref, index) => (
+                              <div key={index} className="grid grid-cols-3 gap-4 p-3 border-b border-blue-100 hover:bg-blue-50/50 transition-colors">
+                                <div>
+                                  <Badge variant="outline" className="border-blue-300 text-blue-700">
+                                    #{pref.rank}
+                                  </Badge>
+                                </div>
+                                <div className="font-medium text-blue-900">{pref.lesson}</div>
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-16 bg-blue-100 rounded-full h-2">
+                                      <div 
+                                        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+                                        style={{ width: `${(typeof pref.probability === 'number' ? pref.probability * 100 : parseFloat(pref.probability) || 0)}%` }}
+                                      ></div>
+                                    </div>
+                                    <span className="text-sm text-blue-700">
+                                      {typeof pref.probability === 'number' 
+                                        ? (pref.probability * 100).toFixed(1) + '%'
+                                        : pref.probability}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Side: Preferences Display */}
+              <div className="space-y-6">
+                {/* Content Preference */}
+                <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
+                  <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
+                    <CardTitle className="flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5" />
+                      Performance & Content Preferences
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="space-y-4">
+                      {/* Content Preference */}
+                      {contentPreference && (
+                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                          <span className="font-medium text-blue-900">Content Preferences</span>
+                          <Badge className="bg-blue-600 text-white">{contentPreference.preferences}</Badge>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                        <span className="font-medium text-blue-900">Cognitive Performance</span>
+                        <Badge className="bg-blue-600 text-white">{getDisplayLabel(cognitivePerformance)}</Badge>
+                      </div>
+
+                      {/* Stress Level - Read Only Display */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
+                          <span className="font-medium text-blue-900">Stress Level</span>
+                          <Badge className="bg-blue-600 text-white">{stressLevel}</Badge>
+                        </div>
+                        {stressProbability !== null && (
+                          <p className="text-sm text-blue-600 ml-3">Stress Probability: {(stressProbability * 100).toFixed(1)}%</p>
+                        )}
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  </CardContent>
+                </Card>
 
-            {/* Peer Prediction - Left Side */}
-            {/* {peerPrediction && (
-              <Card className="backdrop-blur-sm bg-gradient-to-r from-orange-100 to-orange-200 border-orange-300 shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-3">
-                    <Users className="h-6 w-6 text-orange-700" />
-                    <div>
-                      <h3 className="font-semibold text-orange-900">Predicted Peer Class</h3>
-                      <p className="text-2xl font-bold text-orange-800">{peerPrediction}</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )} */}
-          </div>
+                {/* Peer Preference */}
+                {peerPreference && (
+                  <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
+                    <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-t-lg">
+                      <CardTitle className="flex items-center gap-2">
+                        <Users className="h-5 w-5" />
+                        Peer Preference
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-6">
+                      <div className="flex justify-between items-center p-4 bg-purple-50 rounded-lg">
+                        <span className="font-medium text-purple-900">Class Index</span>
+                        <Badge className="bg-purple-600 text-white text-lg px-4 py-2">
+                          Index No. {peerPreference.preferences}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-          {/* Right Side: Preferences Display */}
-          <div className="space-y-6">
-            {/* Content Preference - Updated to include performance data */}
-            <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
-              <CardHeader className="bg-gradient-to-r from-green-600 to-green-700 text-white rounded-t-lg">
-                <CardTitle className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5" />
-                  Performance & Content Preferences
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6">
+                {/* Loading Indicator */}
+                {loading && (
+                  <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-center space-x-3">
+                        <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
+                        <span className="text-blue-700">Processing predictions...</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* Lesson Prediction Tab */}
+          <TabsContent value="prediction">
+            <div className="bg-white rounded-lg shadow-lg p-6 border border-blue-100">
+              <div className="text-center mb-6">
+                <h2 className="text-2xl font-bold text-blue-800">Lesson Prediction</h2>
+                <p className="text-blue-600 text-sm">
+                  Get personalized lesson recommendations based on your profile data
+                </p>
+              </div>
+              
+              {/* User Information */}
+              {user && (
+                <div className="mb-4 text-center">
+                  <p className="text-sm text-gray-600">
+                    Logged in as: <span className="font-semibold text-blue-700">{user.email}</span>
+                  </p>
+                </div>
+              )}
+              
+              {lessonError && (
+                <Alert className="mb-4 border-red-200 bg-red-50">
+                  <AlertCircle className="h-4 w-4 text-red-600" />
+                  <AlertDescription className="text-red-800">
+                    {lessonError}
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {/* Profile Data Display */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Left Side: Personal Information & Performance */}
                 <div className="space-y-4">
-                  {/* Content Preference */}
-                  {contentPreference && (
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="font-medium text-blue-900">Content Preferences</span>
-                      <Badge className="bg-blue-600 text-white">{contentPreference.preferences}</Badge>
+                  <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                      <User className="h-5 w-5" />
+                      <h3 className="font-semibold">Personal Information</h3>
                     </div>
-                  )}
-                  
-                  <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                    <span className="font-medium text-blue-900">Cognitive Performance</span>
-                    <Badge className="bg-blue-600 text-white">{getDisplayLabel(cognitivePerformance)}</Badge>
+                    
+                    <div className="p-4">
+                      <table className="w-full border-collapse">
+                        <tbody>
+                          <tr className="border-b border-gray-200">
+                            <td className="font-semibold text-blue-900 py-2 px-3">Name</td>
+                            <td className="py-2 px-3">{user?.name || "Not available"}</td>
+                          </tr>
+                          <tr className="border-b border-gray-200">
+                            <td className="font-semibold text-blue-900 py-2 px-3">Age</td>
+                            <td className="py-2 px-3">{user?.age || "Not available"}</td>
+                          </tr>
+                          <tr className="border-b border-gray-200">
+                            <td className="font-semibold text-blue-900 py-2 px-3">Gender</td>
+                            <td className="py-2 px-3">{lessonFormData["Male/Female"] || "Not specified"}</td>
+                          </tr>
+                          <tr className="border-b border-gray-200">
+                            <td className="font-semibold text-blue-900 py-2 px-3">Preferred Study Method</td>
+                            <td className="py-2 px-3">{lessonFormData["Preferred Study Method"] || "Not specified"}</td>
+                          </tr>
+                          <tr>
+                            <td className="font-semibold text-blue-900 py-2 px-3">Disliked Lesson</td>
+                            <td className="py-2 px-3">{lessonFormData["Disliked lesson"] || "None"}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-
-                  {/* Stress Level - Read Only Display */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
-                      <span className="font-medium text-blue-900">Stress Level</span>
-                      <Badge className="bg-blue-600 text-white">{stressLevel}</Badge>
+                  
+                  <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                      <BarChart3 className="h-5 w-5" />
+                      <h3 className="font-semibold">Performance Data</h3>
                     </div>
-                    {stressProbability !== null && (
-                      <p className="text-sm text-blue-600 ml-3">Stress Probability: {(stressProbability * 100).toFixed(1)}%</p>
-                    )}
+                    
+                    <div className="p-4">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b-2 border-blue-200">
+                            <th className="text-blue-900 text-left py-2 px-3">Lesson</th>
+                            <th className="text-right text-blue-900 py-2 px-3">Marks</th>
+                            <th className="text-right text-blue-900 py-2 px-3">Time (s)</th>
+                          </tr>
+                        </thead>
+                        <tbody className="capitalize">
+                          {[
+                            "number sequences", "perimeter", "ratio", "fractions/decimals",
+                            "indices", "algebra", "angles", "volume and capacity", "area", "probability"
+                          ].map((lesson) => (
+                            <tr key={lesson} className="border-b border-gray-200">
+                              <td className="py-2 px-3">{lesson}</td>
+                              <td className="text-right py-2 px-3">{lessonFormData[`${lesson} marks`]}</td>
+                              <td className="text-right py-2 px-3">{lessonFormData[`${lesson} time(s)`]}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Peer Preference */}
-            {peerPreference && (
-              <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Peer Preference
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-center p-4 bg-purple-50 rounded-lg">
-                    <span className="font-medium text-purple-900">Class Index</span>
-                    <Badge className="bg-purple-600 text-white text-lg px-4 py-2">
-                      Index No. {peerPreference.preferences}
-                    </Badge>
+                
+                {/* Right Side: Assessment & Prediction */}
+                <div className="space-y-4">
+                  <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+                    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                      <BrainCircuit className="h-5 w-5" />
+                      <h3 className="font-semibold">Assessment Information</h3>
+                    </div>
+                    
+                    <div className="p-4">
+                      <Alert className="mb-4 bg-blue-50 border-blue-200">
+                        <AlertDescription>
+                          Your cognitive performance and stress level values are displayed below as read-only.
+                        </AlertDescription>
+                      </Alert>
+                      
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-white p-3 rounded-md border border-blue-100 text-center">
+                            <p className="text-sm text-gray-500 mb-1">Stress Level</p>
+                            <p className="text-lg font-bold text-blue-800">{lessonFormData.stress_level || "Not specified"}</p>
+                          </div>
+                          <div className="bg-white p-3 rounded-md border border-blue-100 text-center">
+                            <p className="text-sm text-gray-500 mb-1">Cognitive Performance</p>
+                            <p className="text-lg font-bold text-blue-800">{lessonFormData.cognitive_performance || "Not specified"}</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-center mt-6">
+                        <Button
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-6"
+                          onClick={handleLessonPredictionSubmit}
+                          disabled={loading || !lessonFormData.stress_level || !lessonFormData.cognitive_performance}
+                        >
+                          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                          Get Prediction
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Loading Indicator */}
-            {loading && (
-              <Card className="backdrop-blur-sm bg-white/80 border-blue-200 shadow-lg">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-center space-x-3">
-                    <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-                    <span className="text-blue-700">Processing predictions...</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        </div>
+                  
+                  {/* Results Display */}
+                  {lessonPredictionResult && (
+                    <div className="bg-white rounded-lg border border-blue-200 shadow-sm">
+                      <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-3 rounded-t-lg flex items-center gap-2">
+                        <BookOpen className="h-5 w-5" />
+                        <h3 className="font-semibold">Prediction Results</h3>
+                      </div>
+                      
+                      <div className="p-4">
+                        <Alert className="mb-4 bg-green-50 border-green-200">
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                          <AlertDescription className="text-green-800">
+                            Your content and lesson preferences have been successfully determined!
+                          </AlertDescription>
+                        </Alert>
+                        
+                        {/* Content-based prediction */}
+                        <Card className="mb-4 border-blue-200 bg-blue-50">
+                          <CardContent className="pt-6">
+                            <h4 className="text-lg font-bold text-blue-800 mb-2">
+                              Recommended Content Type:
+                            </h4>
+                            <div className="bg-white p-3 rounded-md border border-blue-100 text-center mb-2">
+                              <p className="text-xl font-bold text-blue-700">
+                                {lessonPredictionResult.contentBased}
+                              </p>
+                            </div>
+                            <p className="text-sm text-blue-600">
+                              Based on your cognitive performance ({lessonFormData.cognitive_performance}) 
+                              and current stress level ({lessonFormData.stress_level}).
+                            </p>
+                          </CardContent>
+                        </Card>
+                        
+                        {/* Top 5 lessons */}
+                        {lessonPredictionResult.topLessons && lessonPredictionResult.topLessons.length > 0 && (
+                          <Card className="mb-4 border-blue-200">
+                            <CardContent className="pt-6">
+                              <h4 className="text-lg font-bold text-blue-800 mb-2">
+                                Top 5 Recommended Lessons:
+                              </h4>
+                              
+                              <table className="w-full border-collapse">
+                                <thead>
+                                  <tr className="border-b-2 border-blue-200">
+                                    <th className="text-blue-900 text-left py-2 px-3">Rank</th>
+                                    <th className="text-blue-900 text-left py-2 px-3">Lesson</th>
+                                    <th className="text-right text-blue-900 py-2 px-3">Score</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {lessonPredictionResult.topLessons.map((lesson, index) => (
+                                    <tr key={index} className="border-b border-gray-200">
+                                      <td className="font-medium py-2 px-3">{index + 1}</td>
+                                      <td className="py-2 px-3">{lesson.lesson}</td>
+                                      <td className="text-right py-2 px-3">
+                                        {typeof lesson.probability === 'number' 
+                                          ? lesson.probability.toFixed(2) 
+                                          : lesson.probability}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </CardContent>
+                          </Card>
+                        )}
+                        
+                        <div className="flex flex-col sm:flex-row justify-between gap-4 mt-4">
+                          <Button
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => navigate("/filtered")}
+                          >
+                            View Recommended Courses
+                          </Button>
+                          
+                          <Button
+                            variant="outline"
+                            className="border-blue-300 text-blue-700 hover:bg-blue-50"
+                            onClick={() => navigate("/")}
+                          >
+                            Back to Home
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

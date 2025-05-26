@@ -227,7 +227,7 @@ const Home = () => {
 
   if (loading || userLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center space-y-4">
           <Loader2 className="h-16 w-16 animate-spin text-blue-600 mx-auto" />
           <p className="text-slate-600 font-medium text-lg">Loading your journey...</p>
@@ -237,7 +237,7 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+    <div className="min-h-screen">
       {/* Hero Section */}
       <div className="w-full px-8 py-12">
         <div className="text-center mb-16">          
@@ -262,15 +262,7 @@ const Home = () => {
                     <div className="text-left">
                       <h3 className="text-xl font-bold text-slate-900">
                         Welcome back, {user?.name || "Learner"}!
-                      </h3>
-                      <p className="text-slate-500 text-sm">Continue your learning journey</p>
-                      {/* Debug info to see current values */}
-                      {cognitivePerformance && (
-                        <p className="text-xs text-blue-600">Cognitive: {cognitivePerformance}</p>
-                      )}
-                      {stressLevel && (
-                        <p className="text-xs text-green-600">Stress: {stressLevel}</p>
-                      )}
+                      </h3>                      
                     </div>
                   </div>
                   <div className="text-3xl">👋</div>
