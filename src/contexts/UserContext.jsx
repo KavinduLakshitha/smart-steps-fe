@@ -1,7 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import axios from 'axios';
-
-const API_URL = 'https://research-project-theta.vercel.app/api';
+import config from '../config';
 
 const UserContext = createContext(null);
 
@@ -20,7 +19,8 @@ export const UserProvider = ({ children }) => {
           return;
         }
 
-        const response = await axios.get(`${API_URL}/auth/profile`, {
+        const apiUrl = config.api.getUrl('MAIN_API', '/api/auth/profile');
+        const response = await axios.get(apiUrl, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -45,7 +45,8 @@ export const UserProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       if (!token) return false;
 
-      const response = await axios.put(`${API_URL}/auth/updateProfile`, userData, {
+      const apiUrl = config.api.getUrl('MAIN_API', '/api/auth/updateProfile');
+      const response = await axios.put(apiUrl, userData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

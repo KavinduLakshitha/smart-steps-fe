@@ -84,12 +84,48 @@ export const testCorsConnection = async () => {
   }
 };
 
+const apiService = {
+  auth: {
+    register: async (userData) => {
+      const url = config.api.getUrl('MAIN_API', '/api/auth/register');
+      return await axios.post(url, userData);
+    },
+    
+    login: async (credentials) => {
+      const url = config.api.getUrl('MAIN_API', '/api/auth/login');
+      return await axios.post(url, credentials);
+    },
+    
+    getProfile: async () => {
+      const token = localStorage.getItem('token');
+      const url = config.api.getUrl('MAIN_API', '/api/auth/profile');
+      return await axios.get(url, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    },
+    
+    updateProfile: async (profileData) => {
+      const token = localStorage.getItem('token');
+      const url = config.api.getUrl('MAIN_API', '/api/auth/updateProfile');
+      return await axios.put(url, profileData, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+    }
+  },
+  
+  // Keep existing cognitive functions
+  cognitive: {
+    submitData: submitCognitiveData,
+    testCors: testCorsConnection
+  }
+};
+
 export const getServiceUrl = (serviceName, path = '') => {
   return config.api.getUrl(serviceName, path);
 };
 
-export default {
-  submitCognitiveData,
-  testCorsConnection,
-  getServiceUrl
-};
+export default apiService;
