@@ -83,10 +83,10 @@ const Home = () => {
         });
 
         // Check if cognitive assessment is completed
-        const cognitiveCompleted = !!cogValue;
+        const cognitiveCompleted = cogValue && cogValue !== "";
         
         // Check stress level completion
-        const stressCompleted = !!dbStressLevel;
+        const stressCompleted = dbStressLevel && dbStressLevel !== "";
         
         // Fetch content preferences
         let contentData = null;
