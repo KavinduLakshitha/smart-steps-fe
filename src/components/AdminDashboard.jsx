@@ -1,18 +1,13 @@
 import React, { useEffect, useState } from "react";
-import {
-  Typography,
-  Box,
-  Card,
-  CardContent,
-  CardActions,
-  Button,
-  Grid,
-} from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
 
   // Fetch all users on component mount
@@ -21,9 +16,10 @@ const AdminDashboard = () => {
       try {
         const response = await axios.get("https://research-project-theta.vercel.app/api/auth/users");
         setUsers(response.data);
+        setError(null);
       } catch (error) {
         console.error("Error fetching users:", error);
-        alert("Failed to fetch users.");
+        setError("Failed to fetch users. Please try again later.");
       }
     };
 
@@ -35,90 +31,107 @@ const AdminDashboard = () => {
     try {
       await axios.delete(`https://research-project-theta.vercel.app/api/auth/users/${userId}`);
       setUsers(users.filter((user) => user._id !== userId)); // Remove the user from the list
-      alert("User deleted successfully!");
+      
+      // Using a more modern approach instead of alert
+      setError({ type: "success", message: "User deleted successfully!" });
+      setTimeout(() => setError(null), 3000);
     } catch (error) {
       console.error("Error deleting user:", error);
-      alert("Failed to delete user.");
+      setError("Failed to delete user. Please try again.");
     }
   };
 
   return (
-    <Box sx={{ padding: 4 }}>
-      <Typography variant="h4" gutterBottom>
-        Admin Dashboard
-      </Typography>
+    <div className="container p-6 mx-auto">
+      <h1 className="text-3xl font-bold tracking-tight mb-6">Admin Dashboard</h1>
+
+      {/* Show error/success messages */}
+      {error && (
+        <Alert className={`mb-4 ${error.type === "success" ? "bg-green-50 border-green-500" : "bg-red-50 border-red-500"}`}>
+          <AlertDescription>{error.message || error}</AlertDescription>
+        </Alert>
+      )}
 
       {/* Navigation Cards */}
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={4}>
-          <Card elevation={3} sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            <CardContent sx={{ flexGrow: 1 }}>
-              <Typography variant="h6" gutterBottom>
-                Add New Lessons
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Create new lessons available on the platform.
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button
-                size="small"
-                color="primary"
-                onClick={() => navigate("/addcourse")}
-              >
-                Go to Courses
-              </Button>
-            </CardActions>
-          </Card>
-        </Grid>
-        <Grid item xs={12} sm={6} md={4}>
-          <Card elevation={3} sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-            <CardContent sx={{ flexGrow: 1 }}>
-              <Typography variant="h6" gutterBottom>
-                Add New Specializations
-              </Typography>
-              <Typography variant="body2" color="text.secondary">
-                Add new specializations available on the platform.
-              </Typography>
-            </CardContent>
-            <CardActions>
-              <Button
-                size="small"
-                color="primary"
-                onClick={() => navigate("/addspecial")}
-              >
-                Go to Specializations
-              </Button>
-            </CardActions>
-          </Card>
-        </Grid>
-      </Grid>
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
+        <Card className="h-full flex flex-col shadow-md hover:shadow-lg transition-shadow">
+          <CardContent className="flex-grow pt-6">
+            <h3 className="text-lg font-medium mb-2">Add New Lessons</h3>
+            <p className="text-sm text-gray-500">
+              Create new lessons available on the platform.
+            </p>
+          </CardContent>
+          <CardFooter className="pt-0">
+            <Button 
+              variant="default" 
+              onClick={() => navigate("/addcourse")}
+              className="w-full"
+            >
+              Go to Courses
+            </Button>
+          </CardFooter>
+        </Card>
+
+        <Card className="h-full flex flex-col shadow-md hover:shadow-lg transition-shadow">
+          <CardContent className="flex-grow pt-6">
+            <h3 className="text-lg font-medium mb-2">Add New Specializations</h3>
+            <p className="text-sm text-gray-500">
+              Add new specializations available on the platform.
+            </p>
+          </CardContent>
+          <CardFooter className="pt-0">
+            <Button 
+              variant="default" 
+              onClick={() => navigate("/addspecial")}
+              className="w-full"
+            >
+              Go to Specializations
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
 
       {/* Users Section */}
-      <Typography variant="h5" gutterBottom>
-        User Management
-      </Typography>
-      <Grid container spacing={3}>
-        {users.map((user) => (
-          <Grid item key={user._id} xs={12} sm={6} md={4}>
-            <Card elevation={3} sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
-              <CardContent sx={{ flexGrow: 1 }}>
-                <Typography variant="h6">{user.name}</Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Email: {user.email}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Age: {user.age}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  Gender: {user.Gender}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
-    </Box>
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold mb-4">User Management</h2>
+        
+        {users.length === 0 && !error ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500">Loading users...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            {users.map((user) => (
+              <Card key={user._id} className="h-full flex flex-col shadow-md">
+                <CardContent className="flex-grow pt-6">
+                  <h3 className="text-lg font-medium">{user.name}</h3>
+                  <div className="mt-2 space-y-1">
+                    <p className="text-sm text-gray-500">
+                      Email: {user.email}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Age: {user.age}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Gender: {user.Gender}
+                    </p>
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-0 flex justify-end">
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => handleDeleteUser(user._id)}
+                  >
+                    Delete User
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

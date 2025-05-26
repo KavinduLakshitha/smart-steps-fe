@@ -260,7 +260,7 @@ const Login = () => {
         </Card>
 
         {/* Demo credentials info */}
-        <Card className="mt-6 backdrop-blur-sm bg-blue-50/90 border-blue-200/50">
+        {/* <Card className="mt-6 backdrop-blur-sm bg-blue-50/90 border-blue-200/50">
           <CardContent className="p-4">
             <div className="flex items-center space-x-2 mb-3">
               <ShieldCheck className="h-4 w-4 text-blue-600" />
@@ -273,7 +273,7 @@ const Login = () => {
               </div>
             </div>
           </CardContent>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );

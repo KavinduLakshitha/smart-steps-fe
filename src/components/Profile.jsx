@@ -37,6 +37,16 @@ const Profile = () => {
   const [lessonPredictions, setLessonPredictions] = useState([]);
   const [freshLessonPredictions, setFreshLessonPredictions] = useState([]);
 
+  const getDisplayLabel = (dbValue) => {
+    const displayMapping = {
+      "Low": "Beginner",
+      "Average": "Intermediate", 
+      "High": "Great",
+      "Very High": "Expert"
+    };
+    return displayMapping[dbValue] || dbValue;
+  };  
+
   const timeFieldMapping = {
     numberSequencesTime: "number sequences time(s)",
     ratioTime: "ratio time(s)",
@@ -477,25 +487,7 @@ const Profile = () => {
       setSnackbarSeverity("error");
       setSnackbarOpen(true);
     }
-  };
-
-  const handleCognitivePerformanceChange = async (value) => {
-    setCognitivePerformance(value);
-    
-    try {
-      // Update in API instead of localStorage
-      await updateUserPerformanceData({ cognitivePerformance: value });
-      
-      setSnackbarMessage("Cognitive performance updated successfully!");
-      setSnackbarSeverity("success");
-      setSnackbarOpen(true);
-    } catch (error) {
-      console.error("Error updating cognitive performance:", error);
-      setSnackbarMessage("Failed to update cognitive performance");
-      setSnackbarSeverity("error");
-      setSnackbarOpen(true);
-    }
-  };
+  };  
 
   const handleStressLevelChange = async (selectedStressLevel) => {
     setStressLevel(selectedStressLevel);
@@ -675,7 +667,7 @@ const Profile = () => {
     "triangles",
     "volume and capacity",
   ];  
-  const cognitivePerformanceOptions = ["Low", "Average", "High", "Very High"];
+  const cognitivePerformanceOptions = ["Beginner", "Intermediate", "Great", "Expert"];
 
   // Display logic - prioritize fresh predictions over database ones
   const displayLessonPreferences = freshLessonPredictions.length > 0 
@@ -930,7 +922,7 @@ const Profile = () => {
                   
                   <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg">
                     <span className="font-medium text-blue-900">Cognitive Performance</span>
-                    <Badge className="bg-blue-600 text-white">{cognitivePerformance}</Badge>
+                    <Badge className="bg-blue-600 text-white">{getDisplayLabel(cognitivePerformance)}</Badge>
                   </div>
 
                   {/* Stress Level - Read Only Display */}

@@ -27,6 +27,16 @@ const Home = () => {
   const [stressLevel, setStressLevel] = useState("");
   const [stressProbability, setStressProbability] = useState(null);
 
+  const getDisplayLabel = (dbValue) => {
+    const displayMapping = {
+      "Low": "Beginner",
+      "Average": "Intermediate", 
+      "High": "Great",
+      "Very High": "Expert"
+    };
+    return displayMapping[dbValue] || dbValue;
+  };
+
   useEffect(() => {
     const fetchAssessmentData = async () => {
       if (userLoading) return;
@@ -385,7 +395,7 @@ const Home = () => {
                           <div className="flex items-center justify-between">
                             <span className="text-sm text-slate-600">Performance Level</span>
                             <Badge variant="secondary" className={step.textColor}>
-                              {step.status.data.level}
+                              {getDisplayLabel(step.status.data.level)}
                             </Badge>
                           </div>
                         )}

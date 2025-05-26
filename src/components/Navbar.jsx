@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useUser } from "../contexts/UserContext";
 
@@ -25,7 +25,6 @@ import {
   Menu,
   X
 } from "lucide-react";
-import { useState } from "react";
 
 const Navbar = () => {
   const navigate = useNavigate();
@@ -59,6 +58,18 @@ const Navbar = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen);
   };
 
+  // Check if user is admin
+  const isAdmin = user && user.email === "admin@gmail.com";
+
+  // Handle logo click based on user role
+  const handleLogoClick = () => {
+    if (isAdmin) {
+      navigate("/admin-dashboard");
+    } else {
+      navigate("/");
+    }
+  };
+
   return (
     <>
       {/* Main Navbar */}
@@ -68,14 +79,14 @@ const Navbar = () => {
             {/* Logo/Brand */}
             <div 
               className="flex items-center space-x-2 cursor-pointer group"
-              onClick={() => navigate("/")}
+              onClick={handleLogoClick}
             >
               <div className="p-2 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg group-hover:from-blue-700 group-hover:to-indigo-700 transition-all duration-200">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div className="flex flex-col">
                 <span className="text-xl font-bold text-gray-900">Smart Steps</span>
-                <span className="text-xs text-gray-500 hidden sm:block">Learn. Grow. Excel.</span>
+                <span className="text-xs text-gray-500 hidden sm:block">Learn. Grow. Excel.</span>                
               </div>
             </div>
 
@@ -83,8 +94,9 @@ const Navbar = () => {
             <div className="hidden md:flex items-center space-x-6">
               {isAuthenticated ? (
                 <>
-                  {/* Course Materials Button */}
-                  <Button
+                  {/* Admin Dashboard Button - Only visible for admin */}
+                  {!isAdmin && (
+                    <Button
                     variant="ghost"
                     onClick={() => navigate("/filtered")}
                     className="text-gray-700 hover:text-blue-600 hover:bg-blue-50"
@@ -92,6 +104,7 @@ const Navbar = () => {
                     <BookOpen className="h-4 w-4 mr-2" />
                     Your Plan
                   </Button>
+                  )}                                 
 
                   {/* User Dropdown */}
                   <DropdownMenu>
@@ -125,24 +138,25 @@ const Navbar = () => {
                           <p className="text-xs leading-none text-muted-foreground">
                             {user?.email}
                           </p>
+                          {isAdmin && (
+                            <Badge variant="outline" className="mt-1 w-fit text-xs bg-red-50 text-red-700 border-red-200">
+                              Admin Account
+                            </Badge>
+                          )}
                         </div>
                       </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem 
-                        onClick={() => navigate("/profile")}
-                        className="cursor-pointer"
-                      >
-                        <User className="mr-2 h-4 w-4" />
-                        <span>Profile</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem 
-                        onClick={() => navigate("/dashboard")}
-                        className="cursor-pointer"
-                      >
-                        <BookOpen className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
+                      <DropdownMenuSeparator />                      
+                      {!isAdmin && (
+                      <>
+                      <DropdownMenuItem
+                          onClick={() => navigate("/profile")}
+                          className="cursor-pointer"
+                        >
+                          <User className="mr-2 h-4 w-4" />
+                          <span>Profile</span>
+                        </DropdownMenuItem>                        
+                          <DropdownMenuSeparator /></>
+                      )}
                       <DropdownMenuItem 
                         onClick={handleLogout}
                         className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -212,11 +226,31 @@ const Navbar = () => {
                   <span className="text-xs text-gray-500">
                     {user?.email}
                   </span>
+                  {isAdmin && (
+                    <Badge variant="outline" className="mt-1 w-fit text-xs bg-red-50 text-red-700 border-red-200">
+                      Admin Account
+                    </Badge>
+                  )}
                 </div>
               </div>
 
               {/* Mobile Menu Items */}
               <div className="space-y-2">
+                {/* Admin Dashboard - Only visible for admin */}
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      navigate("/admin-dashboard");
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className="w-full justify-start text-gray-700 hover:text-blue-600 hover:bg-blue-50"
+                  >
+                    <BookOpen className="h-4 w-4 mr-3" />
+                    Admin Dashboard
+                  </Button>
+                )}
+                
                 <Button
                   variant="ghost"
                   onClick={() => {

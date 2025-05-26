@@ -18,6 +18,7 @@ const StressDetection = () => {
   const [probability, setProbability] = useState(null);
   const [userEmail, setUserEmail] = useState("");
   const [showProceedButton, setShowProceedButton] = useState(false);
+  const [savingToDatabase, setSavingToDatabase] = useState(false);
   const videoRef = useRef(null);
   
   // Get user email from JWT token
@@ -59,6 +60,44 @@ const StressDetection = () => {
       }
     }
   };
+
+  // Function to save stress data to database
+  const saveStressDataToDatabase = async (stressLevel, stressProbability, recommendations) => {
+    try {
+      setSavingToDatabase(true);
+      console.log(`Saving stress data to database for user: ${userEmail}`);
+      
+      const mainApiUrl = config.api.getUrl('MAIN_API', '/api/stress-predictions');
+      
+      const response = await fetch(mainApiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          stressLevel: stressLevel,
+          probability: stressProbability,
+          recommendations: recommendations
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log("✅ Successfully saved stress data to database:", data);
+        return { success: true, data };
+      } else {
+        console.error("❌ Failed to save stress data to database:", data);
+        return { success: false, error: data.message || "Failed to save to database" };
+      }
+    } catch (error) {
+      console.error("❌ Error saving stress data to database:", error);
+      return { success: false, error: error.message };
+    } finally {
+      setSavingToDatabase(false);
+    }
+  };
   
   // Handle video analysis
   const handleAnalyzeVideo = async () => {
@@ -96,14 +135,27 @@ const StressDetection = () => {
       const data = await response.json();
       
       if (response.ok) {
-        setResult(`Analysis complete! Detected stress level: ${data.stress_level}`);
-        setProbability(data.probability);
+        const stressLevel = data.stress_level;
+        const stressProbability = data.probability;
+        const recommendations = data.recommendations;
+        
+        setResult(`Analysis complete! Detected stress level: ${stressLevel}`);
+        setProbability(stressProbability);
         
         // Save stress level and probability to localStorage for other components
-        localStorage.setItem("stressLevel", data.stress_level);
-        localStorage.setItem("stressProbability", data.probability);
+        localStorage.setItem("stressLevel", stressLevel);
+        localStorage.setItem("stressProbability", stressProbability.toString());
         
-        // Show proceed button after analysis
+        // Save to database
+        const saveResult = await saveStressDataToDatabase(stressLevel, stressProbability, recommendations);
+        
+        if (!saveResult.success) {
+          // Show warning but don't prevent user from proceeding
+          console.warn("Database save failed but analysis succeeded:", saveResult.error);
+          setError(`Analysis complete, but failed to save to database: ${saveResult.error}. You can still proceed.`);
+        }
+        
+        // Show proceed button after analysis (regardless of database save result)
         setShowProceedButton(true);
       } else {
         setError(data.error || "Failed to analyze video. Please try again.");
@@ -176,7 +228,7 @@ const StressDetection = () => {
           {/* Analyze Button */}
           <Button 
             onClick={handleAnalyzeVideo}
-            disabled={analyzing || !videoFile || !userEmail}
+            disabled={analyzing || !videoFile || !userEmail || savingToDatabase}
             className="w-full text-lg py-6"
             size="lg"
           >
@@ -184,6 +236,11 @@ const StressDetection = () => {
               <>
                 <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Analyzing...
+              </>
+            ) : savingToDatabase ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Saving to Database...
               </>
             ) : (
               <>
@@ -224,6 +281,11 @@ const StressDetection = () => {
                   Probability: {probability.toFixed(2)}
                 </p>
               )}
+              {savingToDatabase && (
+                <p className="text-sm text-blue-600">
+                  Saving stress data to your profile...
+                </p>
+              )}
             </div>
           )}
           
@@ -252,6 +314,7 @@ const StressDetection = () => {
                 onClick={handleProceedToSongs}
                 size="lg"
                 className="bg-green-600 hover:bg-green-700 text-white px-8 py-3"
+                disabled={savingToDatabase}
               >
                 Proceed to Song Recommendations
                 <ArrowRight className="ml-2 h-5 w-5" />
@@ -278,7 +341,7 @@ const StressDetection = () => {
             </li>
             <li className="flex items-start">
               <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-800 text-sm font-medium rounded-full mr-3 mt-0.5">3</span>
-              Receive a stress level assessment
+              Receive a stress level assessment and save to your profile
             </li>
             <li className="flex items-start">
               <span className="inline-flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-800 text-sm font-medium rounded-full mr-3 mt-0.5">4</span>
